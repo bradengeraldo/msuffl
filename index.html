@@ -1118,6 +1118,48 @@
     border-radius: 50%; display: inline-block;
     box-shadow: 0 0 6px var(--green); margin-right: 0.4rem;
   }
+
+  /* PLAYER TOGGLE / SCENARIO MODE */
+  .player-toggle-row { cursor: pointer; transition: opacity 0.18s; user-select: none; }
+  .player-toggle-row:hover td { background: var(--surface3) !important; }
+  .player-toggle-row.excluded { opacity: 0.3; }
+  .player-toggle-row.excluded td { text-decoration: line-through; color: var(--muted); }
+  .toggle-cell { width: 22px; padding-right: 0 !important; }
+  .toggle-th  { width: 22px; padding-right: 0 !important; }
+  .toggle-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    transition: background 0.15s;
+    vertical-align: middle;
+  }
+  .player-toggle-row.excluded .toggle-dot { background: var(--red); }
+  .scenario-banner {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255,216,77,0.08);
+    border: 1px solid rgba(255,216,77,0.28);
+    border-radius: 8px;
+    padding: 0.4rem 0.85rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--yellow);
+  }
+  .scenario-banner.active { display: flex; }
+  .scenario-reset-btn {
+    margin-left: auto;
+    background: rgba(255,216,77,0.13);
+    border: 1px solid rgba(255,216,77,0.28);
+    color: var(--yellow);
+    border-radius: 5px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .scenario-reset-btn:hover { background: rgba(255,216,77,0.25); }
 </style>
 </head>
 <body>
@@ -1403,19 +1445,19 @@ function showTeamDetail(team) {
         <span class="blbl">Budget</span>
       </div>
       <div class="budget-card">
-        <span class="bval">${budget.totalKept}</span>
+        <span class="bval scenario-kept">${budget.totalKept}</span>
         <span class="blbl">Kept $</span>
       </div>
       <div class="budget-card">
-        <span class="bval ${parseInt(budget.remaining) < 0 ? 'neg' : ''}">${parseInt(budget.remaining) >= 0 ? '+' : ''}${budget.remaining}</span>
+        <span class="bval scenario-remaining ${parseInt(budget.remaining) < 0 ? 'neg' : ''}">${parseInt(budget.remaining) >= 0 ? '+' : ''}${budget.remaining}</span>
         <span class="blbl">Remaining</span>
       </div>
       <div class="budget-card">
-        <span class="bval">${budget.playerCount}</span>
+        <span class="bval scenario-count">${budget.playerCount}</span>
         <span class="blbl">Keepers</span>
       </div>
       <div class="budget-card">
-        <span class="bval ${parseInt(budget.inSeasonFaab) < 0 ? 'neg' : ''}">${parseInt(budget.inSeasonFaab) >= 0 ? '+' : ''}${budget.inSeasonFaab}</span>
+        <span class="bval scenario-faab ${parseInt(budget.inSeasonFaab) < 0 ? 'neg' : ''}">${parseInt(budget.inSeasonFaab) >= 0 ? '+' : ''}${budget.inSeasonFaab}</span>
         <span class="blbl">In-Season FAAB</span>
       </div>
     </div>` : '';
@@ -1427,7 +1469,10 @@ function showTeamDetail(team) {
     const pClass = posClass(p.pos);
     const v26 = p.val2026 || '—';
     const v25 = p.val2025 || '—';
-    return `<tr>
+    const val25Num = parseInt(p.val2025) || 0;
+    const val26Num = parseInt(p.val2026) || 0;
+    return `<tr class="player-toggle-row" data-val25="${val25Num}" data-val26="${val26Num}">
+      <td class="toggle-cell"><span class="toggle-dot"></span></td>
       <td><span class="pos-badge ${pClass}">${posStr}</span></td>
       <td class="player-name">${escHtml(p.player)}${rookieTag}</td>
       <td class="val-mono">${escHtml(v25)}</td>
@@ -1443,10 +1488,15 @@ function showTeamDetail(team) {
       </div>
       ${budgetHtml}
     </div>
-    <div class="card-wrap"><div class="table-scroll">
+    <div class="scenario-banner" id="scenario-banner">
+      <span>⚡ Scenario mode — click players to toggle</span>
+      <button class="scenario-reset-btn" id="scenario-reset">Reset All</button>
+    </div>
+  <div class="card-wrap"><div class="table-scroll">
       <table class="roster-table">
         <thead>
           <tr>
+            <th class="toggle-th"></th>
             <th>Pos</th>
             <th>Player</th>
             <th>2025 Value</th>
@@ -1456,6 +1506,64 @@ function showTeamDetail(team) {
         <tbody>${rows}</tbody>
       </table>
     </div></div>`;
+  // Wire scenario row toggles — runs every call so fresh rows get listeners
+  // State is NOT persisted; toggled players reset automatically on page load
+  const _detail = document.getElementById('team-detail-content');
+  _detail.querySelectorAll('.player-toggle-row').forEach(row => {
+    row.addEventListener('click', () => {
+      row.classList.toggle('excluded');
+      recalcScenario(budget);
+    });
+  });
+  const _resetBtn = document.getElementById('scenario-reset');
+  if (_resetBtn) {
+    _resetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      _detail.querySelectorAll('.player-toggle-row').forEach(r => r.classList.remove('excluded'));
+      recalcScenario(budget);
+    });
+  }
+}
+
+
+// ── Scenario toggle event wiring (runs after showTeamDetail sets innerHTML) ──
+function recalcScenario(budget) {
+  const detail = document.getElementById('team-detail-content');
+  if (!detail) return;
+  const toggleRows = detail.querySelectorAll('.player-toggle-row');
+  // Track EXCLUDED sum as a delta off the original budget values.
+  // This keeps the baseline anchored to budget.totalKept (which may differ
+  // from the raw sum of val2025 due to TBD/0 players) so math stays accurate.
+  let activeCount = 0, excludedSum = 0, anyExcluded = false;
+  toggleRows.forEach(row => {
+    if (row.classList.contains('excluded')) {
+      anyExcluded = true;
+      excludedSum += parseInt(row.dataset.val26) || 0;
+    } else {
+      activeCount++;
+    }
+  });
+  const banner = document.getElementById('scenario-banner');
+  if (banner) banner.classList.toggle('active', anyExcluded);
+  const keptEl  = detail.querySelector('.scenario-kept');
+  const remEl   = detail.querySelector('.scenario-remaining');
+  const cntEl   = detail.querySelector('.scenario-count');
+  const faabEl  = detail.querySelector('.scenario-faab');
+  if (!budget) return;
+  const origKept = parseInt(budget.totalKept);
+  const newKept  = origKept - excludedSum;
+  const newRem   = parseInt(budget.budget) - newKept;
+  const newFaab  = parseInt(budget.inSeasonFaab) + excludedSum;
+  if (keptEl) keptEl.textContent = newKept;
+  if (cntEl)  cntEl.textContent  = activeCount;
+  if (remEl) {
+    remEl.textContent  = (newRem >= 0 ? '+' : '') + newRem;
+    remEl.className = 'bval scenario-remaining' + (newRem < 0 ? ' neg' : '');
+  }
+  if (faabEl) {
+    faabEl.textContent = (newFaab >= 0 ? '+' : '') + newFaab;
+    faabEl.className = 'bval scenario-faab' + (newFaab < 0 ? ' neg' : '');
+  }
 }
 
 document.getElementById('back-to-rosters').addEventListener('click', () => {
