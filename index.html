@@ -1160,6 +1160,468 @@
     font-family: inherit;
   }
   .scenario-reset-btn:hover { background: rgba(255,216,77,0.25); }
+
+  /* ===================== TRADE ANALYZER ===================== */
+  .trade-hero {
+    text-align: center;
+    padding: 2.5rem 1rem 2rem;
+  }
+  .trade-hero h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    letter-spacing: 0.08em;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+  .trade-hero h2 span { color: var(--green); }
+  .trade-hero p { color: var(--muted); font-size: 0.95rem; }
+
+  .trade-builder {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 2rem;
+  }
+  @media (max-width: 700px) {
+    .trade-builder { grid-template-columns: 1fr; }
+    .trade-vs { display: none; }
+  }
+  .trade-vs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 2.5rem;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .trade-side {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+  }
+  .trade-side-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+  }
+  .trade-side-label span { color: var(--green); }
+
+  .player-search-wrap {
+    position: relative;
+    margin-bottom: 0.75rem;
+  }
+  .player-search-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 0.6rem 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .player-search-input:focus { border-color: var(--border-bright); }
+  .player-search-input::placeholder { color: var(--muted); }
+
+  .player-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--surface3);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    z-index: 50;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .player-dropdown.open { display: block; }
+  .player-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background 0.15s;
+    border-bottom: 1px solid var(--border);
+  }
+  .player-dropdown-item:last-child { border-bottom: none; }
+  .player-dropdown-item:hover { background: var(--surface2); }
+  .player-dropdown-item .dd-name { flex: 1; font-weight: 500; }
+  .player-dropdown-item .dd-meta { color: var(--muted); font-size: 0.8rem; font-family: 'DM Mono', monospace; }
+  .player-dropdown-item .dd-val { color: var(--green); font-size: 0.8rem; font-family: 'DM Mono', monospace; font-weight: 600; }
+
+  .trade-players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 60px;
+  }
+  .trade-player-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.88rem;
+    transition: border-color 0.2s;
+    animation: chipIn 0.2s ease;
+  }
+  @keyframes chipIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+  .trade-player-chip:hover { border-color: var(--border-bright); }
+  .chip-name { flex: 1; font-weight: 500; }
+  .chip-meta { color: var(--muted); font-size: 0.78rem; font-family: 'DM Mono', monospace; }
+  .chip-val { color: var(--green); font-weight: 700; font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+  .chip-remove {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .chip-remove:hover { color: var(--red); }
+  .trade-side-total {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .trade-side-total strong { color: var(--green); font-family: 'DM Mono', monospace; font-size: 1rem; }
+
+  .trade-analyze-btn {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 2.5rem;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.1em;
+    padding: 0.85rem 2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 20px rgba(0,201,107,0.25);
+  }
+  .trade-analyze-btn:hover { background: var(--green-dark); box-shadow: 0 0 30px rgba(0,201,107,0.4); transform: translateY(-1px); }
+  .trade-analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Results */
+  .trade-results { display: none; }
+  .trade-results.visible { display: block; }
+
+  .trade-value-bars {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .tvb-row { margin-bottom: 1.25rem; }
+  .tvb-row:last-child { margin-bottom: 0; }
+  .tvb-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .tvb-label .tvb-name { color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.78rem; }
+  .tvb-label .tvb-score { color: var(--green); font-family: 'DM Mono', monospace; }
+  .tvb-bar-bg {
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .tvb-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+    background: linear-gradient(90deg, var(--green-dark), var(--green));
+  }
+  .tvb-bar-fill.loser { background: linear-gradient(90deg, #a03030, var(--red)); }
+  .tvb-diff {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .tvb-diff strong { color: var(--text); }
+
+  .trade-score-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 800px) { .trade-score-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .trade-score-grid { grid-template-columns: 1fr; } }
+  .trade-score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem;
+  }
+  .tsc-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+  .tsc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+  .tsc-row:last-child { margin-bottom: 0; }
+  .tsc-row .tsc-team { color: var(--muted); }
+  .tsc-row .tsc-val { font-family: 'DM Mono', monospace; font-weight: 700; }
+  .tsc-row .tsc-val.win { color: var(--green); }
+  .tsc-row .tsc-val.lose { color: var(--red); }
+  .tsc-row .tsc-val.neutral { color: var(--yellow); }
+  .tsc-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-top: 0.5rem;
+    display: inline-block;
+  }
+  .tsc-badge.green { background: rgba(0,201,107,0.15); color: var(--green); border: 1px solid rgba(0,201,107,0.3); }
+  .tsc-badge.red { background: rgba(255,82,82,0.12); color: var(--red); border: 1px solid rgba(255,82,82,0.3); }
+  .tsc-badge.yellow { background: rgba(255,216,77,0.12); color: var(--yellow); border: 1px solid rgba(255,216,77,0.3); }
+
+  .trade-pos-needs {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem;
+  }
+  .tpn-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tpn-item:last-child { border-bottom: none; }
+  .tpn-icon { flex-shrink: 0; }
+  .tpn-text { color: var(--muted); line-height: 1.4; }
+  .tpn-text strong { color: var(--text); }
+
+  .trade-verdict {
+    background: var(--surface2);
+    border: 1px solid var(--border-bright);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .trade-verdict::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--green-dark), var(--green), var(--green-dark));
+  }
+  .verdict-header {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+  .verdict-headline {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    letter-spacing: 0.06em;
+    color: var(--text);
+    margin-bottom: 1rem;
+    line-height: 1.1;
+  }
+  .verdict-headline .v-winner { color: var(--green); }
+  .verdict-headline .v-loser { color: var(--red); }
+  .verdict-body {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+  .verdict-body p { margin-bottom: 0.6rem; }
+  .verdict-body p:last-child { margin-bottom: 0; }
+  .verdict-body strong { color: var(--text); }
+  .verdict-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .verdict-tag {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--surface);
+  }
+  .verdict-tag.pos { border-color: rgba(0,201,107,0.3); color: var(--green); background: rgba(0,201,107,0.08); }
+  .verdict-tag.neg { border-color: rgba(255,82,82,0.3); color: var(--red); background: rgba(255,82,82,0.08); }
+  .verdict-tag.warn { border-color: rgba(255,216,77,0.3); color: var(--yellow); background: rgba(255,216,77,0.08); }
+
+  .trade-reset-btn {
+    display: block;
+    margin: 1.5rem auto 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .trade-reset-btn:hover { border-color: var(--border-bright); color: var(--text); }
+  .trade-empty-msg { color: var(--muted); font-size: 0.82rem; padding: 0.5rem 0; font-style: italic; }
+
+  /* ---- ROSTER ANALYSIS PANEL ---- */
+  .roster-analysis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .ra-title {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  .ra-scores {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .ra-score {
+    flex: 1;
+    min-width: 110px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+  }
+  .ra-score-label {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.35rem;
+  }
+  .ra-score-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .ra-score-bar {
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 2px;
+    margin-bottom: 0.3rem;
+    overflow: hidden;
+  }
+  .ra-score-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.45s ease;
+  }
+  .ra-score-tag {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ra-score.high .ra-score-num { color: var(--green); }
+  .ra-score.high .ra-score-fill { background: var(--green); }
+  .ra-score.mid  .ra-score-num { color: var(--yellow); }
+  .ra-score.mid  .ra-score-fill { background: var(--yellow); }
+  .ra-score.low  .ra-score-num { color: var(--red); }
+  .ra-score.low  .ra-score-fill { background: var(--red); }
+  .ra-pos-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .ra-pos-item {
+    flex: 1;
+    min-width: 68px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .ra-grade { font-family: 'DM Mono', monospace; font-size: 1rem; font-weight: 500; }
+  .ra-grade.A { color: var(--green); }
+  .ra-grade.B { color: #7adb8e; }
+  .ra-grade.C { color: var(--yellow); }
+  .ra-grade.D { color: #ff9e4d; }
+  .ra-grade.F { color: var(--red); }
+  .ra-verdict {
+    font-size: 0.83rem;
+    color: var(--muted);
+    line-height: 1.65;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .ra-verdict strong { color: var(--text); }
+
 </style>
 </head>
 <body>
@@ -1175,6 +1637,7 @@
       <button class="nav-btn" data-page="draft">Rookie Draft</button>
       <button class="nav-btn" data-page="trades">Trades</button>
       <button class="nav-btn" data-page="writeups">Write Ups</button>
+      <button class="nav-btn" data-page="tradeanalyzer">Trade Analyzer</button>
     </nav>
   </div>
 </header>
@@ -1300,6 +1763,69 @@
     </div>
   </div>
 
+  <!-- TRADE ANALYZER PAGE -->
+  <div class="page" id="page-tradeanalyzer">
+    <div class="trade-hero">
+      <h2>Trade <span>Analyzer</span></h2>
+      <p>Add players to each side, then get an ADP-based value breakdown and plain-English verdict.</p>
+    </div>
+
+    <div class="trade-builder">
+      <!-- SIDE A -->
+      <div class="trade-side" id="trade-side-a">
+        <div class="trade-side-label">Team A <span>Gives</span></div>
+        <div class="player-search-wrap">
+          <input class="player-search-input" id="search-a" type="text" placeholder="Search player to add…" autocomplete="off">
+          <div class="player-dropdown" id="dropdown-a"></div>
+        </div>
+        <div class="trade-players-list" id="players-a">
+          <div class="trade-empty-msg">No players added yet</div>
+        </div>
+        <div class="trade-side-total">
+          <span>Total Value</span>
+          <strong id="total-a">—</strong>
+        </div>
+      </div>
+
+      <div class="trade-vs">VS</div>
+
+      <!-- SIDE B -->
+      <div class="trade-side" id="trade-side-b">
+        <div class="trade-side-label">Team B <span>Gives</span></div>
+        <div class="player-search-wrap">
+          <input class="player-search-input" id="search-b" type="text" placeholder="Search player to add…" autocomplete="off">
+          <div class="player-dropdown" id="dropdown-b"></div>
+        </div>
+        <div class="trade-players-list" id="players-b">
+          <div class="trade-empty-msg">No players added yet</div>
+        </div>
+        <div class="trade-side-total">
+          <span>Total Value</span>
+          <strong id="total-b">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <button class="trade-analyze-btn" id="analyze-btn" disabled>Analyze Trade</button>
+
+    <!-- RESULTS (hidden until analyzed) -->
+    <div class="trade-results" id="trade-results">
+
+      <div class="section-title">Value Comparison</div>
+      <div class="trade-value-bars" id="value-bars"></div>
+
+      <div class="section-title" style="margin-top:1.5rem">Detailed Scores</div>
+      <div class="trade-score-grid" id="score-grid"></div>
+
+      <div class="section-title" style="margin-top:1.5rem">Positional Notes</div>
+      <div class="trade-pos-needs" id="pos-needs"></div>
+
+      <div class="trade-verdict" id="trade-verdict"></div>
+
+      <button class="trade-reset-btn" id="trade-reset-btn">↺ Reset & Analyze Another Trade</button>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -1389,6 +1915,161 @@ function buildHome() {
   });
 }
 
+
+// ===================== ROSTER ANALYSIS =====================
+let _rosterTeam = null;
+let _rosterEntries = [];
+
+function _getRosterPlayer(entry) {
+  const msu = window._MSU;
+  if (!msu) return null;
+  const { SP_DATA, TP, estimateFairAuctionValue, estimateDefaultKeeperCost } = msu;
+  const rawName = (entry.player || '').trim();
+  const nameLower = rawName.toLowerCase();
+  let sp = null, spKey = rawName;
+  for (const k of Object.keys(SP_DATA)) {
+    if (k.toLowerCase() === nameLower) { sp = SP_DATA[k]; spKey = k; break; }
+  }
+  const tp = TP.find(p => p.name.toLowerCase() === nameLower);
+  const rawPos = (entry.pos || 'WR').replace('D/ST', 'DST');
+  const pos = ['QB','RB','WR','TE','K','DST'].includes(rawPos) ? rawPos : 'WR';
+  const adp = tp ? tp.adp : 150;
+  const val = tp ? tp.val : (sp ? Math.max(10, Math.round(sp.f * 0.7)) : 15);
+  const age = tp ? tp.age : 26;
+  return { name: spKey, pos, age, val, adp };
+}
+
+function _analyzeRoster(entries) {
+  const msu = window._MSU;
+  if (!msu || !entries || !entries.length) return null;
+  const { calcVal, calcWinNow, calcRebuild, calcSurplus } = msu;
+  const players = entries.map(_getRosterPlayer).filter(Boolean).filter(p => p.adp < 999);
+  if (!players.length) return null;
+  const sorted = [...players].sort((a, b) => calcVal(b) - calcVal(a));
+  const starters = sorted.slice(0, 8);
+  const bench    = sorted.slice(8);
+  const wnNum = starters.reduce((s,p) => s + calcWinNow(p), 0) + bench.reduce((s,p) => s + calcWinNow(p) * 0.25, 0);
+  const wnDen = starters.length + bench.length * 0.25 || 1;
+  const winNow = Math.round(wnNum / wnDen);
+  const rbNum = players.reduce((s,p) => s + calcRebuild(p) * (p.age <= 24 ? 1.5 : 1), 0);
+  const rbDen = players.reduce((s,p) => s + (p.age <= 24 ? 1.5 : 1), 0) || 1;
+  const rebuild = Math.round(rbNum / rbDen);
+  const keptEntries = entries.filter(e => e.val2026 && e.val2026 !== 'TBD' && !isNaN(parseInt(e.val2026)));
+  let surplusTotal = 0;
+  const contractDetails = [];
+  keptEntries.forEach(e => {
+    const p = _getRosterPlayer(e);
+    if (!p) return;
+    const { cost, fair, surplus } = calcSurplus(p);
+    surplusTotal += surplus;
+    contractDetails.push({ name: e.player, cost, fair, surplus: Math.round(surplus) });
+  });
+  surplusTotal = Math.round(surplusTotal);
+  const byPos = { QB: [], RB: [], WR: [], TE: [] };
+  players.forEach(p => { if (byPos[p.pos]) byPos[p.pos].push(p); });
+  const posGrades = {};
+  ['QB','RB','WR','TE'].forEach(pos => {
+    const pp = (byPos[pos] || []).sort((a,b) => calcVal(b) - calcVal(a));
+    if (!pp.length) { posGrades[pos] = { score: 0, grade: 'F' }; return; }
+    const weights = (pos === 'QB' || pos === 'TE') ? [1.0] : [1.0, 0.7, 0.4, 0.2];
+    let tot = 0, w = 0;
+    pp.slice(0, weights.length).forEach((p, i) => { tot += calcVal(p) * weights[i]; w += weights[i]; });
+    const score = Math.round(tot / w);
+    posGrades[pos] = { score, grade: score >= 78 ? 'A' : score >= 62 ? 'B' : score >= 46 ? 'C' : score >= 30 ? 'D' : 'F' };
+  });
+  contractDetails.sort((a, b) => b.surplus - a.surplus);
+  return { winNow, rebuild, surplusTotal, posGrades, contractDetails };
+}
+
+function _rosterVerdict(a) {
+  if (!a) return '';
+  const { winNow, rebuild, surplusTotal, posGrades, contractDetails } = a;
+  const parts = [];
+  if (winNow >= 70 && rebuild < 52)
+    parts.push('A clear <strong>win-now roster</strong> built for this season. The window is open — depth and health will determine the ceiling.');
+  else if (rebuild >= 68 && winNow < 52)
+    parts.push('A team in <strong>full rebuild mode</strong> with significant youth and long-term upside. Draft capital and young talent are the story.');
+  else if (winNow >= 62 && rebuild >= 62)
+    parts.push('A <strong>balanced contender</strong> with both immediate firepower and future assets. Few glaring weaknesses.');
+  else
+    parts.push('A <strong>transitional roster</strong> caught between competing now and building for the future. Key moves could tilt this either direction.');
+  const strong = ['QB','RB','WR','TE'].filter(p => 'AB'.includes((posGrades[p] || {}).grade || ''));
+  const weak   = ['QB','RB','WR','TE'].filter(p => 'DF'.includes((posGrades[p] || {}).grade || ''));
+  if (strong.length) parts.push('Strongest at <strong>' + strong.join(' &amp; ') + '</strong>.');
+  if (weak.length)   parts.push('Thinnest at <strong>' + weak.join(' &amp; ') + '</strong> — a prime target in trades or FAAB.');
+  if (surplusTotal >= 25)
+    parts.push('Exceptional contract value: <strong>$' + surplusTotal + ' total surplus</strong> locked in.');
+  else if (surplusTotal >= 10)
+    parts.push('Solid keeper value with a $' + surplusTotal + ' surplus overall.');
+  else if (surplusTotal <= -15)
+    parts.push('Carrying $' + Math.abs(surplusTotal) + ' over market in keeper contracts — flexibility is limited.');
+  const best = contractDetails[0];
+  if (best && best.surplus >= 8)
+    parts.push('Best deal on the roster: <strong>' + best.name + '</strong> at $' + best.cost + ' ($' + best.surplus + ' surplus).');
+  return parts.join(' ');
+}
+
+function _renderRosterAnalysis(analysis) {
+  if (!analysis) return '<div class="roster-analysis" id="roster-analysis"><p style="color:var(--muted);font-size:0.83rem">Loading analysis…</p></div>';
+  const { winNow, rebuild, surplusTotal, posGrades } = analysis;
+  const lvl  = s => s >= 65 ? 'high' : s >= 42 ? 'mid' : 'low';
+  const slvl = s => s >= 15 ? 'high' : s >= -10 ? 'mid' : 'low';
+  const wnTag = winNow >= 75 ? 'Contender' : winNow >= 60 ? 'Fringe' : winNow >= 45 ? 'Developing' : 'Rebuilding';
+  const rbTag = rebuild >= 70 ? 'Dynasty Asset' : rebuild >= 55 ? 'Promising' : rebuild >= 40 ? 'Mixed' : 'Aging Core';
+  const surpSign = surplusTotal >= 0 ? '+' : '';
+  const surpTag  = surplusTotal >= 20 ? 'Great Value' : surplusTotal >= 5 ? 'Fair' : surplusTotal >= -10 ? 'Slight Overpay' : 'Expensive';
+  const surpBarPct = Math.min(100, Math.max(0, 50 + surplusTotal * 0.9));
+  const posHtml = ['QB','RB','WR','TE'].map(pos => {
+    const g = posGrades[pos] || { grade: 'F' };
+    const gl = g.grade[0];
+    return '<div class="ra-pos-item"><span class="pos-badge ' + pos.toLowerCase() + '">' + pos + '</span><span class="ra-grade ' + gl + '">' + g.grade + '</span></div>';
+  }).join('');
+  return '<div class="roster-analysis" id="roster-analysis">' +
+    '<div class="ra-title">⚡ Roster Analysis</div>' +
+    '<div class="ra-scores">' +
+      '<div class="ra-score ' + lvl(winNow) + '">' +
+        '<div class="ra-score-label">Win-Now</div>' +
+        '<div class="ra-score-num">' + winNow + '</div>' +
+        '<div class="ra-score-bar"><div class="ra-score-fill" style="width:' + winNow + '%"></div></div>' +
+        '<div class="ra-score-tag">' + wnTag + '</div>' +
+      '</div>' +
+      '<div class="ra-score ' + lvl(rebuild) + '">' +
+        '<div class="ra-score-label">Rebuild</div>' +
+        '<div class="ra-score-num">' + rebuild + '</div>' +
+        '<div class="ra-score-bar"><div class="ra-score-fill" style="width:' + rebuild + '%"></div></div>' +
+        '<div class="ra-score-tag">' + rbTag + '</div>' +
+      '</div>' +
+      '<div class="ra-score ' + slvl(surplusTotal) + '">' +
+        '<div class="ra-score-label">Contract Surplus</div>' +
+        '<div class="ra-score-num">' + surpSign + '$' + surplusTotal + '</div>' +
+        '<div class="ra-score-bar"><div class="ra-score-fill" style="width:' + surpBarPct + '%"></div></div>' +
+        '<div class="ra-score-tag">' + surpTag + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="ra-pos-row">' + posHtml + '</div>' +
+    '<div class="ra-verdict">' + _rosterVerdict(analysis) + '</div>' +
+  '</div>';
+}
+
+function _updateRosterAnalysisPanel() {
+  const detail = document.getElementById('team-detail-content');
+  if (!detail || !_rosterEntries.length) return;
+  const excluded = new Set();
+  detail.querySelectorAll('.player-toggle-row.excluded').forEach(row => {
+    excluded.add(row.dataset.playerName || '');
+  });
+  const active = _rosterEntries.filter(e => !excluded.has(e.player));
+  const analysis = _analyzeRoster(active.length ? active : _rosterEntries);
+  const newHtml = _renderRosterAnalysis(analysis);
+  const existing = detail.querySelector('#roster-analysis');
+  if (existing) {
+    existing.outerHTML = newHtml;
+  } else {
+    const cardWrap = detail.querySelector('.card-wrap');
+    if (cardWrap) cardWrap.insertAdjacentHTML('beforebegin', newHtml);
+  }
+}
+
 // ===================== ROSTER PAGE =====================
 function buildRosters() {
   const grid = document.getElementById('rosters-teams-grid');
@@ -1427,6 +2108,8 @@ function showTeamDetail(team) {
   document.getElementById('team-detail-view').style.display = '';
 
   const roster = LEAGUE_DATA.rosters[team] || [];
+  _rosterTeam = team;
+  _rosterEntries = roster;
   const mgr = TEAM_TO_MGR[team] || team;
   const budget = LEAGUE_DATA.budgets[team];
 
@@ -1471,7 +2154,7 @@ function showTeamDetail(team) {
     const v25 = p.val2025 || '—';
     const val25Num = parseInt(p.val2025) || 0;
     const val26Num = parseInt(p.val2026) || 0;
-    return `<tr class="player-toggle-row" data-val25="${val25Num}" data-val26="${val26Num}">
+    return `<tr class="player-toggle-row" data-val25="${val25Num}" data-val26="${val26Num}" data-player-name="${escHtml(p.player)}">
       <td class="toggle-cell"><span class="toggle-dot"></span></td>
       <td><span class="pos-badge ${pClass}">${posStr}</span></td>
       <td class="player-name">${escHtml(p.player)}${rookieTag}</td>
@@ -1513,6 +2196,7 @@ function showTeamDetail(team) {
     row.addEventListener('click', () => {
       row.classList.toggle('excluded');
       recalcScenario(budget);
+      _updateRosterAnalysisPanel();
     });
   });
   const _resetBtn = document.getElementById('scenario-reset');
@@ -1521,8 +2205,11 @@ function showTeamDetail(team) {
       e.stopPropagation();
       _detail.querySelectorAll('.player-toggle-row').forEach(r => r.classList.remove('excluded'));
       recalcScenario(budget);
+      _updateRosterAnalysisPanel();
     });
   }
+  // Render roster analysis panel (window._MSU is set by IIFE which runs at page load)
+  _updateRosterAnalysisPanel();
 }
 
 
@@ -2041,6 +2728,978 @@ buildHistory();
 
 // Make showTeamDetail global
 window.showTeamDetail = showTeamDetail;
+
+// ===================== TRADE ANALYZER =====================
+(function() {
+
+// ---- Player & Valuation Database (from MSUFFL Available Players spreadsheet) ----
+const SP_DATA={
+  "Bijan Robinson":{f:79.3,kc:null,t:"Super Stud"},
+  "Jahmyr Gibbs":{f:80.0,kc:null,t:"Super Stud"},
+  "Ja'Marr Chase":{f:76.7,kc:82,t:"Super Stud"},
+  "Puka Nacua":{f:80.7,kc:22,t:"Super Stud"},
+  "Jaxon Smith-Njigba":{f:78.7,kc:null,t:"Super Stud"},
+  "Christian McCaffrey":{f:72.5,kc:107,t:"Super Stud"},
+  "CeeDee Lamb":{f:54.0,kc:80,t:"WR Stud"},
+  "Amon-Ra St. Brown":{f:60.5,kc:20,t:"WR Stud"},
+  "Jonathan Taylor":{f:64.0,kc:80,t:"Super Stud"},
+  "Justin Jefferson":{f:65.7,kc:100,t:"Super Stud"},
+  "James Cook III":{f:58.3,kc:70,t:"RB Stud"},
+  "De'Von Achane":{f:59.5,kc:12,t:"RB Stud"},
+  "Ashton Jeanty":{f:47.5,kc:5,t:"RB Stud"},
+  "Drake London":{f:60.7,kc:78,t:"WR Stud"},
+  "Malik Nabers":{f:57.0,kc:9,t:"WR Stud"},
+  "Trey McBride":{f:30.0,kc:13,t:"TE Stud"},
+  "Omarion Hampton":{f:34.0,kc:5,t:"RB Starter"},
+  "Saquon Barkley":{f:51.0,kc:116,t:"RB Stud"},
+  "Nico Collins":{f:48.5,kc:23,t:"WR Stud"},
+  "Brock Bowers":{f:28.0,kc:9,t:"TE Stud"},
+  "Rashee Rice":{f:50.0,kc:13,t:"WR Starter"},
+  "Chase Brown":{f:45.0,kc:13,t:"RB Starter"},
+  "George Pickens":{f:38.7,kc:41,t:"WR Starter"},
+  "Chris Olave":{f:34.0,kc:25,t:"WR Starter"},
+  "Kenneth Walker III":{f:46.0,kc:74,t:"RB Starter"},
+  "Josh Allen":{f:25.0,kc:30,t:"QB Stud"},
+  "Jeremiyah Love":{f:33.0,kc:1,t:"RB Starter"},
+  "A.J. Brown":{f:52.0,kc:88,t:"WR Stud"},
+  "Lamar Jackson":{f:17.0,kc:26,t:"QB Stud"},
+  "Josh Jacobs":{f:47.5,kc:60,t:"RB Stud"},
+  "Tetairoa McMillan":{f:23.5,kc:5,t:"WR Starter"},
+  "Derrick Henry":{f:51.0,kc:41,t:"RB Stud"},
+  "Tee Higgins":{f:24.5,kc:26,t:"WR Starter"},
+  "Garrett Wilson":{f:34.0,kc:61,t:"WR Stud"},
+  "Drake Maye":{f:12.7,kc:9,t:"QB Stud"},
+  "Colston Loveland":{f:16.5,kc:5,t:"TE Starter"},
+  "Breece Hall":{f:40.7,kc:48,t:"RB Starter"},
+  "Davante Adams":{f:21.0,kc:25,t:"WR Starter"},
+  "Kyren Williams":{f:34.5,kc:20,t:"RB Starter"},
+  "Zay Flowers":{f:22.0,kc:null,t:"WR Starter"},
+  "Ladd McConkey":{f:15.0,kc:9,t:"WR Starter"},
+  "Bucky Irving":{f:35.0,kc:9,t:"RB Starter"},
+  "Travis Etienne Jr.":{f:25.7,kc:25,t:"RB Starter"},
+  "Javonte Williams":{f:22.7,kc:13,t:"RB Starter"},
+  "Luther Burden III":{f:9.5,kc:5,t:"WR Starter"},
+  "DeVonta Smith":{f:18.5,kc:36,t:"WR Starter"},
+  "Terry McLaurin":{f:22.5,kc:30,t:"WR Starter"},
+  "Joe Burrow":{f:12.5,kc:28,t:"QB Stud"},
+  "Jameson Williams":{f:22.7,kc:30,t:"WR Starter"},
+  "Jaylen Waddle":{f:27.7,kc:54,t:"WR Starter"},
+  "Jayden Daniels":{f:16.5,kc:9,t:"QB Stud"},
+  "TreVeyon Henderson":{f:23.0,kc:5,t:"RB Starter"},
+  "Emeka Egbuka":{f:13.5,kc:5,t:"WR Starter"},
+  "Cam Skattebo":{f:23.5,kc:5,t:"RB Starter"},
+  "Mike Evans":{f:15.5,kc:1,t:"WR Starter"},
+  "Christian Watson":{f:8.5,kc:4,t:"WR Starter"},
+  "D'Andre Swift":{f:25.5,kc:36,t:"RB Starter"},
+  "Jalen Hurts":{f:13.0,kc:24,t:"QB Stud"},
+  "Quinshon Judkins":{f:24.5,kc:5,t:"RB Starter"},
+  "RJ Harvey":{f:17.5,kc:5,t:"RB Starter"},
+  "Tucker Kraft":{f:13.0,kc:12,t:"TE Starter"},
+  "David Montgomery":{f:21.3,kc:47,t:"RB Starter"},
+  "Rome Odunze":{f:11.5,kc:9,t:"WR Starter"},
+  "Bhayshul Tuten":{f:12.5,kc:6,t:"RB Depth"},
+  "Tyler Warren":{f:13.5,kc:5,t:"TE Starter"},
+  "DJ Moore":{f:16.0,kc:29,t:"WR Starter"},
+  "Harold Fannin Jr.":{f:12.0,kc:8,t:"TE Starter"},
+  "Jaylen Warren":{f:15.0,kc:8,t:"RB Depth"},
+  "Courtland Sutton":{f:13.0,kc:10,t:"WR Starter"},
+  "Carnell Tate":{f:5.5,kc:1,t:"WR Depth"},
+  "Jaxson Dart":{f:7.0,kc:5,t:"QB Starter"},
+  "DK Metcalf":{f:14.7,kc:25,t:"WR Starter"},
+  "Marvin Harrison Jr.":{f:10.5,kc:9,t:"WR Starter"},
+  "Justin Herbert":{f:8.0,kc:6,t:"QB Starter"},
+  "Caleb Williams":{f:6.0,kc:9,t:"QB Starter"},
+  "Makai Lemon":{f:5.0,kc:1,t:"WR Depth"},
+  "Alec Pierce":{f:14.5,kc:4,t:"WR Starter"},
+  "Kyle Monangai":{f:9.0,kc:4,t:"RB Depth"},
+  "Rico Dowdle":{f:16.0,kc:13,t:"RB Depth"},
+  "Rhamondre Stevenson":{f:13.5,kc:20,t:"RB Depth"},
+  "Trevor Lawrence":{f:7.5,kc:4,t:"QB Starter"},
+  "Chris Godwin Jr.":{f:10.0,kc:26,t:"WR Starter"},
+  "Brian Thomas Jr.":{f:8.5,kc:9,t:"WR Starter"},
+  "Jordyn Tyson":{f:6.0,kc:1,t:"WR Depth"},
+  "Sam LaPorta":{f:13.5,kc:null,t:"TE Starter"},
+  "Dak Prescott":{f:8.3,kc:13,t:"QB Starter"},
+  "Kyle Pitts Sr.":{f:9.7,kc:6,t:"TE Starter"},
+  "Chuba Hubbard":{f:13.0,kc:12,t:"RB Depth"},
+  "Blake Corum":{f:8.0,kc:5,t:"RB Depth"},
+  "Michael Wilson":{f:12.5,kc:4,t:"WR Starter"},
+  "Jakobi Meyers":{f:10.5,kc:9,t:"WR Starter"},
+  "Ricky Pearsall":{f:8.5,kc:9,t:"WR Starter"},
+  "Tony Pollard":{f:20.3,kc:42,t:"RB Depth"},
+  "Patrick Mahomes II":{f:8.3,kc:null,t:"QB Starter"},
+  "Brock Purdy":{f:9.5,kc:4,t:"QB Starter"},
+  "Jordan Addison":{f:7.0,kc:null,t:"WR Starter"},
+  "Tyler Allgeier":{f:2.3,kc:4,t:"RB Depth"},
+  "Michael Pittman Jr.":{f:6.3,kc:10,t:"WR Starter"},
+  "Bo Nix":{f:4.5,kc:8,t:"QB Starter"},
+  "Wan'Dale Robinson":{f:4.0,kc:4,t:"WR Depth"},
+  "Matthew Stafford":{f:5.0,kc:5,t:"QB Starter"},
+  "Parker Washington":{f:8.0,kc:null,t:"WR Starter"},
+  "Aaron Jones Sr.":{f:18.7,kc:38,t:"RB Depth"},
+  "Dalton Kincaid":{f:5.7,kc:8,t:"TE Starter"},
+  "J.K. Dobbins":{f:14.0,kc:17,t:"RB Starter"},
+  "Oronde Gadsden II":{f:3.5,kc:12,t:"TE Starter"},
+  "Quentin Johnston":{f:5.0,kc:15,t:"WR Depth"},
+  "Zach Charbonnet":{f:11.5,kc:null,t:"RB Depth"},
+  "Jacory Croskey-Merritt":{f:8.5,kc:4,t:"RB Depth"},
+  "Jake Ferguson":{f:4.5,kc:4,t:"TE Starter"},
+  "James Conner":{f:5.5,kc:5,t:"RB Depth"},
+  "Woody Marks":{f:10.0,kc:4,t:"RB Depth"},
+  "Jordan Love":{f:2.5,kc:12,t:"QB Starter"},
+  "Jared Goff":{f:2.3,kc:1,t:"QB Starter"},
+  "Dallas Goedert":{f:9.0,kc:8,t:"TE Starter"},
+  "Kyler Murray":{f:3.3,kc:null,t:"QB Starter"},
+  "Stefon Diggs":{f:7.5,kc:8,t:"WR Starter"},
+  "Kenneth Gainwell":{f:9.5,kc:4,t:"RB Depth"},
+  "Jayden Higgins":{f:2.5,kc:5,t:"WR Depth"},
+  "Jayden Reed":{f:7.0,kc:14,t:"WR Depth"},
+  "Jauan Jennings":{f:3.3,kc:9,t:"WR Starter"},
+  "Malik Willis":{f:0.5,kc:null,t:"QB Starter"},
+  "Baker Mayfield":{f:3.0,kc:10,t:"QB Starter"},
+  "Josh Downs":{f:2.5,kc:14,t:"WR Depth"},
+  "Khalil Shakir":{f:7.0,kc:10,t:"WR Starter"},
+  "Jordan Mason":{f:7.0,kc:9,t:"RB Depth"},
+  "Tyler Shough":{f:1.5,kc:4,t:"QB Starter"},
+  "Travis Kelce":{f:7.3,kc:10,t:"TE Starter"},
+  "Tyrone Tracy Jr.":{f:5.0,kc:8,t:"RB Depth"},
+  "Rachaad White":{f:5.3,kc:4,t:"RB Depth"},
+  "Alvin Kamara":{f:7.5,kc:37,t:"RB Starter"},
+  "Xavier Worthy":{f:2.5,kc:9,t:"WR Depth"},
+  "Braelon Allen":{f:4.3,kc:4,t:"RB Depth"},
+  "Juwan Johnson":{f:4.5,kc:null,t:"TE Starter"},
+  "Jadarian Price":{f:7.5,kc:null,t:"RB Depth"},
+  "Isaiah Likely":{f:1.0,kc:null,t:"TE Starter"},
+  "Romeo Doubs":{f:3.0,kc:4,t:"WR Depth"},
+  "Hunter Henry":{f:4.0,kc:4,t:"TE Starter"},
+  "Dylan Sampson":{f:4.0,kc:null,t:"RB Depth"},
+  "C.J. Stroud":{f:0.5,kc:4,t:"QB Starter"},
+  "Jalen Coker":{f:2.5,kc:null,t:"WR Depth"},
+  "Travis Hunter":{f:5.0,kc:5,t:"WR Starter"},
+  "Tyjae Spears":{f:4.7,kc:6,t:"RB Depth"},
+  "Brenton Strange":{f:6.5,kc:4,t:"TE Starter"},
+  "Deebo Samuel Sr.":{f:5.3,kc:null,t:"WR Depth"},
+  "George Kittle":{f:15.5,kc:22,t:"TE Stud"},
+  "Isiah Pacheco":{f:14.0,kc:38,t:"RB Depth"},
+  "Brandon Aiyuk":{f:6.7,kc:9,t:"WR Starter"},
+  "Trey Benson":{f:2.5,kc:9,t:"RB Depth"},
+  "Keaton Mitchell":{f:2.5,kc:4,t:"RB Depth"},
+  "Matthew Golden":{f:0.5,kc:5,t:"WR Depth"},
+  "Chris Rodriguez Jr.":{f:1.5,kc:4,t:"RB Depth"},
+  "Tyreek Hill":{f:2.5,kc:4,t:"WR Depth"},
+  "Sam Darnold":{f:0.0,kc:null,t:"QB Starter"},
+  "Jerry Jeudy":{f:0.0,kc:4,t:"WR Depth"},
+  "Tank Bigsby":{f:0.5,kc:4,t:"RB Depth"},
+  "Houston Texans":{f:2.5,kc:null,t:"Defense"},
+  "Jonah Coleman":{f:1.0,kc:null,t:"RB Depth"},
+  "Denzel Boston":{f:3.0,kc:null,t:"WR Depth"},
+  "Brian Robinson Jr.":{f:3.5,kc:null,t:"RB Depth"},
+  "Rashid Shaheed":{f:2.3,kc:null,t:"WR Depth"},
+  "Mark Andrews":{f:5.0,kc:4,t:"TE Starter"},
+  "Adonai Mitchell":{f:2.5,kc:null,t:"WR Depth"},
+  "Emmett Johnson":{f:1.0,kc:null,t:"RB Depth"},
+  "Jonathon Brooks":{f:4.5,kc:4,t:"RB Depth"},
+  "Bryce Young":{f:0.5,kc:null,t:"QB Depth"},
+  "Kayshon Boutte":{f:0.5,kc:13,t:"WR Depth"},
+  "Emanuel Wilson":{f:0.0,kc:17,t:"RB Depth"},
+  "Chimere Dike":{f:0.5,kc:null,t:"WR Depth"},
+  "Denver Broncos":{f:2.0,kc:null,t:"Defense"},
+  "Omar Cooper Jr.":{f:2.5,kc:null,t:"WR Depth"},
+  "Kenyon Sadiq":{f:1.0,kc:null,t:"TE Depth"},
+  "Seattle Seahawks":{f:1.5,kc:null,t:"Defense"},
+  "Mike Washington Jr.":{f:0.0,kc:null,t:"RB Depth"},
+  "Cam Ward":{f:0.5,kc:null,t:"QB Starter"},
+  "Los Angeles Rams":{f:1.0,kc:null,t:"Defense"},
+  "Dalton Schultz":{f:0.0,kc:4,t:"TE Depth"},
+  "Philadelphia Eagles":{f:0.5,kc:null,t:"Defense"},
+  "Troy Franklin":{f:0.5,kc:null,t:"WR Depth"},
+  "Jalen McMillan":{f:0.3,kc:null,t:"WR Depth"},
+  "Minnesota Vikings":{f:1.0,kc:null,t:"Defense"},
+  "New England Patriots":{f:0.5,kc:null,t:"Defense"},
+  "Jacksonville Jaguars":{f:0.5,kc:null,t:"Defense"},
+  "Brandon Aubrey":{f:2.0,kc:7,t:"Kicker"},
+  "Kimani Vidal":{f:1.0,kc:null,t:"RB Depth"},
+  "Los Angeles Chargers":{f:1.0,kc:null,t:"Defense"},
+  "Pittsburgh Steelers":{f:1.0,kc:null,t:"Defense"},
+  "Green Bay Packers":{f:0.5,kc:null,t:"Defense"},
+  "Jaylin Noel":{f:0.5,kc:null,t:"WR Depth"},
+  "Tre Harris":{f:0.5,kc:null,t:"WR Depth"},
+  "Ka'imi Fairbairn":{f:1.3,kc:4,t:"Kicker"},
+  "Elic Ayomanor":{f:0.5,kc:4,t:"WR Depth"},
+  "Cam Little":{f:0.5,kc:null,t:"Kicker"},
+  "Cameron Dicker":{f:1.5,kc:8,t:"Kicker"},
+  "Cleveland Browns":{f:1.0,kc:null,t:"Defense"},
+  "Pat Bryant":{f:0.5,kc:null,t:"WR Depth"},
+  "Isaac TeSlaa":{f:0.5,kc:null,t:"WR Depth"},
+  "Kaleb Johnson":{f:0.5,kc:4,t:"RB Depth"},
+  "Sean Tucker":{f:0.5,kc:null,t:"RB Depth"},
+  "AJ Barner":{f:0.5,kc:null,t:"TE Depth"},
+  "Jason Myers":{f:1.0,kc:4,t:"Kicker"},
+  "Jaylen Wright":{f:0.7,kc:null,t:"RB Depth"},
+  "Tre Tucker":{f:0.0,kc:13,t:"WR Depth"},
+  "Ryan Flournoy":{f:0.5,kc:null,t:"WR Depth"},
+  "T.J. Hockenson":{f:0.5,kc:null,t:"TE Depth"},
+  "K.C. Concepcion":{f:2.5,kc:null,t:"WR Depth"},
+  "Tyler Loop":{f:1.0,kc:null,t:"Kicker"},
+  "Terrance Ferguson":{f:0.5,kc:null,t:"TE Depth"},
+  "Evan McPherson":{f:0.5,kc:null,t:"Kicker"},
+  "Darnell Mooney":{f:2.3,kc:4,t:"WR Depth"},
+  "Kansas City Chiefs":{f:0.0,kc:null,t:"Defense"},
+  "Nicholas Singleton":{f:0.5,kc:null,t:"RB Depth"},
+  "Eddy Pineiro":{f:1.5,kc:null,t:"Kicker"},
+  "Chig Okonkwo":{f:0.5,kc:null,t:"TE Depth"},
+  "Andy Borregales":{f:0.5,kc:null,t:"Kicker"},
+  "Calvin Ridley":{f:0.5,kc:4,t:"WR Depth"},
+  "Kyle Williams":{f:0.5,kc:null,t:"WR Depth"},
+  "Jacoby Brissett":{f:0.0,kc:4,t:"QB Depth"},
+  "Detroit Lions":{f:0.5,kc:null,t:"Defense"},
+  "Ray Davis":{f:0.0,kc:null,t:"RB Depth"},
+  "Chase McLaughlin":{f:1.0,kc:7,t:"Kicker"},
+  "Daniel Jones":{f:0.5,kc:null,t:"QB Depth"},
+  "Baltimore Ravens":{f:0.5,kc:null,t:"Defense"},
+  "Cairo Santos":{f:1.0,kc:null,t:"Kicker"},
+  "Devin Neal":{f:0.5,kc:null,t:"RB Depth"},
+  "Mason Taylor":{f:0.5,kc:null,t:"TE Depth"},
+  "Dontayvion Wicks":{f:0.0,kc:null,t:"WR Depth"},
+  "Tank Dell":{f:2.5,kc:null,t:"WR Depth"},
+  "Eli Stowers":{f:1.0,kc:null,t:"TE Depth"},
+  "Joe Mixon":{f:11.0,kc:34,t:"RB Depth"},
+  "Buffalo Bills":{f:0.5,kc:null,t:"Defense"},
+  "Kendre Miller":{f:0.5,kc:null,t:"RB Depth"},
+  "Keon Coleman":{f:0.0,kc:9,t:"WR Depth"},
+  "Kaytron Allen":{f:1.0,kc:null,t:"RB Depth"},
+  "Jake Bates":{f:1.0,kc:5,t:"Kicker"},
+  "Rashod Bateman":{f:0.0,kc:8,t:"WR Depth"},
+  "David Njoku":{f:0.5,kc:12,t:"TE Depth"},
+  "Mack Hollins":{f:0.0,kc:null,t:"WR Depth"},
+  "Marvin Mims Jr.":{f:0.3,kc:null,t:"WR Depth"},
+  "Fernando Mendoza":{f:0.5,kc:null,t:"QB Depth"},
+  "Tory Horton":{f:2.5,kc:null,t:"WR Depth"},
+  "Harrison Mevis":{f:0.5,kc:null,t:"Kicker"},
+  "Ollie Gordon II":{f:0.0,kc:4,t:"RB Depth"},
+  "Najee Harris":{f:0.7,kc:null,t:"RB Depth"},
+  "Gunnar Helm":{f:0.0,kc:null,t:"TE Depth"},
+  "Isaiah Davis":{f:0.0,kc:null,t:"RB Depth"},
+  "Xavier Legette":{f:0.0,kc:9,t:"WR Depth"},
+  "Chris Bell":{f:1.0,kc:null,t:"WR Depth"},
+  "Chris Boswell":{f:1.0,kc:null,t:"Kicker"},
+  "Harrison Butker":{f:1.0,kc:5,t:"Kicker"},
+  "Chris Brazzell II":{f:0.5,kc:null,t:"WR Depth"},
+  "Elijah Sarratt":{f:0.5,kc:null,t:"WR Depth"},
+  "Cooper Kupp":{f:1.7,kc:null,t:"WR Depth"},
+  "Theo Johnson":{f:2.5,kc:7,t:"TE Depth"},
+  "Brashard Smith":{f:0.0,kc:4,t:"RB Depth"},
+  "Pat Freiermuth":{f:0.0,kc:null,t:"TE Depth"},
+  "Colby Parkinson":{f:0.0,kc:null,t:"TE Depth"},
+  "Ty Johnson":{f:1.0,kc:null,t:"RB Depth"},
+  "Cade Otton":{f:0.0,kc:4,t:"TE Depth"},
+  "Michael Penix Jr.":{f:0.7,kc:null,t:"QB Depth"},
+  "Keenan Allen":{f:0.5,kc:7,t:"WR Depth"},
+  "Isaac Guerendo":{f:0.3,kc:null,t:"RB Depth"},
+  "Charlie Smyth":{f:0.0,kc:null,t:"Kicker"},
+  "Zachariah Branch":{f:0.5,kc:null,t:"WR Depth"},
+  "Jaleel McLaughlin":{f:0.0,kc:null,t:"RB Depth"},
+  "J.J. McCarthy":{f:0.5,kc:null,t:"QB Depth"},
+  "Darius Slayton":{f:0.0,kc:null,t:"WR Depth"},
+  "Malachi Fields":{f:2.0,kc:null,t:"WR Depth"},
+  "Isaiah Bond":{f:0.5,kc:null,t:"WR Depth"},
+  "Devaughn Vele":{f:0.0,kc:null,t:"WR Depth"},
+  "Atlanta Falcons":{f:0.5,kc:null,t:"Defense"},
+  "Germie Bernard":{f:0.5,kc:null,t:"WR Depth"},
+  "Jerome Ford":{f:0.0,kc:null,t:"RB Depth"},
+  "Christian Kirk":{f:0.7,kc:null,t:"WR Depth"},
+  "Wil Lutz":{f:0.3,kc:null,t:"Kicker"},
+  "Malik Washington":{f:0.0,kc:4,t:"WR Depth"},
+  "Malik Davis":{f:0.0,kc:null,t:"RB Depth"},
+  "DJ Giddens":{f:0.0,kc:null,t:"RB Depth"},
+  "Demond Claiborne":{f:0.0,kc:null,t:"RB Depth"},
+  "Andrei Iosivas":{f:0.0,kc:null,t:"WR Depth"},
+  "Shedeur Sanders":{f:0.5,kc:4,t:"QB Depth"},
+  "Evan Engram":{f:1.7,kc:null,t:"TE Depth"},
+  "Jack Bech":{f:0.0,kc:null,t:"WR Depth"},
+  "Tyquan Thornton":{f:0.0,kc:null,t:"WR Depth"},
+  "San Francisco 49ers":{f:0.0,kc:null,t:"Defense"},
+  "Konata Mumpfield":{f:0.0,kc:null,t:"WR Depth"},
+  "George Holani":{f:0.0,kc:null,t:"RB Depth"},
+  "Jaydon Blue":{f:0.0,kc:null,t:"RB Depth"},
+  "Bam Knight":{f:0.0,kc:4,t:"RB Depth"},
+  "Jalen Nailor":{f:0.0,kc:null,t:"WR Depth"},
+  "Hollywood Brown":{f:0.0,kc:null,t:"WR Depth"},
+  "Audric Estime":{f:0.0,kc:null,t:"RB Depth"},
+  "Calvin Austin III":{f:0.0,kc:4,t:"WR Depth"},
+  "Jordan James":{f:0.0,kc:null,t:"RB Depth"},
+  "LeQuint Allen Jr.":{f:0.0,kc:null,t:"RB Depth"},
+  "Jake Tonges":{f:0.0,kc:null,t:"TE Depth"},
+  "Indianapolis Colts":{f:0.0,kc:null,t:"Defense"},
+  "Justice Hill":{f:3.0,kc:null,t:"RB Depth"},
+  "Devin Singletary":{f:0.0,kc:5,t:"RB Depth"},
+  "Jarquez Hunter":{f:0.0,kc:null,t:"RB Depth"},
+  "Luke McCaffrey":{f:0.0,kc:null,t:"WR Depth"},
+  "MarShawn Lloyd":{f:0.0,kc:null,t:"RB Depth"},
+  "Chris Brooks":{f:0.0,kc:null,t:"RB Depth"},
+  "Emari Demercado":{f:0.0,kc:null,t:"RB Depth"},
+  "New Orleans Saints":{f:0.0,kc:null,t:"Defense"},
+  "Geno Smith":{f:0.0,kc:null,t:"QB Depth"},
+  "Greg Dulcich":{f:0.0,kc:null,t:"TE Depth"},
+  "Mike Gesicki":{f:0.0,kc:null,t:"TE Depth"},
+  "Cedric Tillman":{f:0.5,kc:null,t:"WR Depth"},
+  "Aaron Rodgers":{f:0.0,kc:null,t:"QB Depth"},
+  "Trevor Etienne":{f:0.0,kc:null,t:"RB Depth"},
+  "Tua Tagovailoa":{f:0.0,kc:null,t:"QB Depth"},
+  "Tommy Myers":{f:0.0,kc:1,t:"TE Depth"},
+  "Samaje Perine":{f:1.5,kc:null,t:"RB Depth"},
+  "Kareem Hunt":{f:0.0,kc:4,t:"RB Depth"},
+  "Will Reichard":{f:0.5,kc:null,t:"Kicker"},
+  "Mac Jones":{f:0.0,kc:null,t:"QB Depth"},
+  "Dont'e Thornton Jr.":{f:0.0,kc:null,t:"WR Depth"},
+  "Jalen Royals":{f:0.0,kc:null,t:"WR Depth"},
+  "John Bates":{f:0.0,kc:null,t:"TE Depth"},
+  "Ted Hurst":{f:0.5,kc:null,t:"WR Depth"},
+  "Ty Simpson":{f:0.0,kc:null,t:"QB Depth"},
+  "Tahj Brooks":{f:0.0,kc:null,t:"RB Depth"},
+  "Tez Johnson":{f:0.0,kc:null,t:"WR Depth"},
+  "Nick Chubb":{f:0.3,kc:5,t:"RB Depth"},
+  "Michael Carter":{f:0.0,kc:null,t:"RB Depth"},
+  "Deshaun Watson":{f:0.0,kc:null,t:"QB Depth"},
+  "Will Shipley":{f:0.0,kc:null,t:"RB Depth"},
+  "Tyler Higbee":{f:0.0,kc:null,t:"TE Depth"},
+  "Olamide Zaccheaus":{f:0.0,kc:null,t:"WR Depth"},
+  "Dallas Cowboys":{f:0.0,kc:null,t:"Defense"},
+  "John Metchie III":{f:0.0,kc:4,t:"WR Depth"},
+  "Zane Gonzalez":{f:0.0,kc:null,t:"Kicker"},
+  "Joshua Palmer":{f:0.0,kc:null,t:"WR Depth"},
+  "Jaylin Lane":{f:0.0,kc:null,t:"WR Depth"},
+  "DeMario Douglas":{f:0.0,kc:null,t:"WR Depth"},
+  "Carolina Panthers":{f:0.0,kc:null,t:"Defense"},
+  "Antonio Williams":{f:0.5,kc:null,t:"WR Depth"},
+  "Chicago Bears":{f:0.5,kc:null,t:"Defense"},
+  "Kirk Cousins":{f:0.0,kc:null,t:"QB Depth"},
+  "Xavier Hutchinson":{f:0.0,kc:null,t:"WR Depth"},
+  "Skyler Bell":{f:0.5,kc:null,t:"WR Depth"},
+  "Miami Dolphins":{f:0.0,kc:null,t:"Defense"},
+  "Adam Randall":{f:0.0,kc:null,t:"RB Depth"},
+  "Noah Gray":{f:0.0,kc:null,t:"TE Depth"},
+  "Austin Ekeler":{f:0.7,kc:null,t:"RB Depth"},
+  "Justin Fields":{f:0.0,kc:null,t:"QB Depth"},
+  "Anthony Richardson Sr.":{f:0.0,kc:null,t:"QB Depth"},
+  "Seth McGowan":{f:0.0,kc:null,t:"RB Depth"},
+  "Joe Milton III":{f:0.0,kc:null,t:"QB Depth"},
+  "Terrell Jennings":{f:0.0,kc:null,t:"RB Depth"},
+  "Dameon Pierce":{f:0.0,kc:null,t:"RB Depth"},
+  "Antonio Gibson":{f:0.0,kc:null,t:"RB Depth"},
+  "Raheim Sanders":{f:0.0,kc:null,t:"RB Depth"},
+  "Savion Williams":{f:0.0,kc:null,t:"WR Depth"},
+  "Jawhar Jordan":{f:0.0,kc:null,t:"RB Depth"},
+  "Treylon Burks":{f:0.0,kc:null,t:"WR Depth"}
+};
+const TP=[
+  {name:"Bijan Robinson",pos:'RB',team:'ATL',age:23,val:95,adp:1},
+  {name:"Jahmyr Gibbs",pos:'RB',team:'DET',age:23,val:95,adp:2},
+  {name:"Ja'Marr Chase",pos:'WR',team:'CIN',age:25,val:90,adp:3},
+  {name:"Puka Nacua",pos:'WR',team:'LAR',age:24,val:90,adp:4},
+  {name:"Jaxon Smith-Njigba",pos:'WR',team:'SEA',age:22,val:95,adp:5},
+  {name:"Christian McCaffrey",pos:'RB',team:'SF',age:28,val:84,adp:6},
+  {name:"CeeDee Lamb",pos:'WR',team:'DAL',age:26,val:73,adp:7},
+  {name:"Amon-Ra St. Brown",pos:'WR',team:'DET',age:25,val:73,adp:8},
+  {name:"Jonathan Taylor",pos:'RB',team:'IND',age:26,val:90,adp:9},
+  {name:"Justin Jefferson",pos:'WR',team:'MIN',age:26,val:90,adp:10},
+  {name:"James Cook III",pos:'RB',team:'BUF',age:25,val:76,adp:11},
+  {name:"De'Von Achane",pos:'RB',team:'MIA',age:24,val:76,adp:12},
+  {name:"Ashton Jeanty",pos:'RB',team:'LV',age:22,val:84,adp:13},
+  {name:"Drake London",pos:'WR',team:'ATL',age:24,val:73,adp:14},
+  {name:"Malik Nabers",pos:'WR',team:'NYG',age:22,val:81,adp:15},
+  {name:"Trey McBride",pos:'TE',team:'ARI',age:25,val:78,adp:16},
+  {name:"Omarion Hampton",pos:'RB',team:'LAC',age:22,val:64,adp:17},
+  {name:"Saquon Barkley",pos:'RB',team:'PHI',age:28,val:70,adp:18},
+  {name:"Nico Collins",pos:'WR',team:'HOU',age:26,val:73,adp:19},
+  {name:"Brock Bowers",pos:'TE',team:'LV',age:22,val:86,adp:20},
+  {name:"Rashee Rice",pos:'WR',team:'KC',age:24,val:53,adp:21},
+  {name:"Chase Brown",pos:'RB',team:'CIN',age:23,val:64,adp:22},
+  {name:"George Pickens",pos:'WR',team:'DAL',age:23,val:61,adp:23},
+  {name:"Chris Olave",pos:'WR',team:'NO',age:25,val:53,adp:24},
+  {name:"Kenneth Walker III",pos:'RB',team:'KC',age:25,val:56,adp:25},
+  {name:"Josh Allen",pos:'QB',team:'BUF',age:29,val:62,adp:26},
+  {name:"Jeremiyah Love",pos:'RB',team:'FA',age:21,val:64,adp:27},
+  {name:"A.J. Brown",pos:'WR',team:'PHI',age:27,val:73,adp:28},
+  {name:"Lamar Jackson",pos:'QB',team:'BAL',age:28,val:62,adp:29},
+  {name:"Josh Jacobs",pos:'RB',team:'GB',age:27,val:76,adp:30},
+  {name:"Tetairoa McMillan",pos:'WR',team:'CAR',age:21,val:61,adp:31},
+  {name:"Derrick Henry",pos:'RB',team:'BAL',age:31,val:64,adp:32},
+  {name:"Tee Higgins",pos:'WR',team:'CIN',age:26,val:53,adp:33},
+  {name:"Garrett Wilson",pos:'WR',team:'NYJ',age:25,val:73,adp:34},
+  {name:"Drake Maye",pos:'QB',team:'NE',age:23,val:76,adp:35},
+  {name:"Colston Loveland",pos:'TE',team:'CHI',age:22,val:60,adp:36},
+  {name:"Breece Hall",pos:'RB',team:'NYJ',age:24,val:56,adp:37},
+  {name:"Davante Adams",pos:'WR',team:'LAR',age:32,val:41,adp:38},
+  {name:"Kyren Williams",pos:'RB',team:'LAR',age:25,val:56,adp:39},
+  {name:"Zay Flowers",pos:'WR',team:'BAL',age:24,val:53,adp:40},
+  {name:"Ladd McConkey",pos:'WR',team:'LAC',age:23,val:61,adp:41},
+  {name:"Bucky Irving",pos:'RB',team:'TB',age:23,val:64,adp:42},
+  {name:"Travis Etienne Jr.",pos:'RB',team:'NO',age:26,val:56,adp:43},
+  {name:"Javonte Williams",pos:'RB',team:'DAL',age:25,val:56,adp:44},
+  {name:"Luther Burden III",pos:'WR',team:'CHI',age:21,val:61,adp:45},
+  {name:"DeVonta Smith",pos:'WR',team:'PHI',age:27,val:53,adp:46},
+  {name:"Terry McLaurin",pos:'WR',team:'WAS',age:29,val:47,adp:47},
+  {name:"Joe Burrow",pos:'QB',team:'CIN',age:28,val:62,adp:48},
+  {name:"Jameson Williams",pos:'WR',team:'DET',age:23,val:61,adp:49},
+  {name:"Jaylen Waddle",pos:'WR',team:'DEN',age:26,val:53,adp:50},
+  {name:"Jayden Daniels",pos:'QB',team:'WAS',age:24,val:68,adp:51},
+  {name:"TreVeyon Henderson",pos:'RB',team:'NE',age:23,val:64,adp:52},
+  {name:"Emeka Egbuka",pos:'WR',team:'TB',age:22,val:61,adp:53},
+  {name:"Cam Skattebo",pos:'RB',team:'NYG',age:22,val:64,adp:54},
+  {name:"Mike Evans",pos:'WR',team:'SF',age:31,val:41,adp:55},
+  {name:"Christian Watson",pos:'WR',team:'GB',age:24,val:53,adp:56},
+  {name:"D'Andre Swift",pos:'RB',team:'CHI',age:26,val:56,adp:57},
+  {name:"Jalen Hurts",pos:'QB',team:'PHI',age:27,val:68,adp:58},
+  {name:"Quinshon Judkins",pos:'RB',team:'CLE',age:21,val:64,adp:59},
+  {name:"RJ Harvey",pos:'RB',team:'DEN',age:22,val:64,adp:60},
+  {name:"Tucker Kraft",pos:'TE',team:'GB',age:24,val:52,adp:61},
+  {name:"David Montgomery",pos:'RB',team:'HOU',age:27,val:56,adp:62},
+  {name:"Rome Odunze",pos:'WR',team:'CHI',age:23,val:61,adp:63},
+  {name:"Bhayshul Tuten",pos:'RB',team:'JAC',age:22,val:38,adp:64},
+  {name:"Tyler Warren",pos:'TE',team:'IND',age:22,val:60,adp:65},
+  {name:"DJ Moore",pos:'WR',team:'BUF',age:27,val:53,adp:66},
+  {name:"Harold Fannin Jr.",pos:'TE',team:'CLE',age:22,val:60,adp:67},
+  {name:"Jaylen Warren",pos:'RB',team:'PIT',age:25,val:30,adp:68},
+  {name:"Courtland Sutton",pos:'WR',team:'DEN',age:29,val:47,adp:69},
+  {name:"Carnell Tate",pos:'WR',team:'FA',age:21,val:36,adp:70},
+  {name:"Jaxson Dart",pos:'QB',team:'NYG',age:22,val:58,adp:71},
+  {name:"DK Metcalf",pos:'WR',team:'PIT',age:27,val:53,adp:72},
+  {name:"Marvin Harrison Jr.",pos:'WR',team:'ARI',age:22,val:61,adp:73},
+  {name:"Justin Herbert",pos:'QB',team:'LAC',age:27,val:50,adp:74},
+  {name:"Caleb Williams",pos:'QB',team:'CHI',age:23,val:58,adp:75},
+  {name:"Makai Lemon",pos:'WR',team:'FA',age:25,val:28,adp:76},
+  {name:"Alec Pierce",pos:'WR',team:'IND',age:25,val:53,adp:77},
+  {name:"Kyle Monangai",pos:'RB',team:'CHI',age:22,val:38,adp:78},
+  {name:"Rico Dowdle",pos:'RB',team:'PIT',age:27,val:30,adp:79},
+  {name:"Rhamondre Stevenson",pos:'RB',team:'NE',age:27,val:30,adp:80},
+  {name:"Trevor Lawrence",pos:'QB',team:'JAC',age:25,val:50,adp:81},
+  {name:"Chris Godwin Jr.",pos:'WR',team:'TB',age:29,val:47,adp:82},
+  {name:"Brian Thomas Jr.",pos:'WR',team:'JAC',age:22,val:61,adp:83},
+  {name:"Jordyn Tyson",pos:'WR',team:'FA',age:21,val:36,adp:84},
+  {name:"Sam LaPorta",pos:'TE',team:'DET',age:24,val:52,adp:85},
+  {name:"Dak Prescott",pos:'QB',team:'DAL',age:32,val:38,adp:86},
+  {name:"Kyle Pitts Sr.",pos:'TE',team:'ATL',age:25,val:52,adp:87},
+  {name:"Chuba Hubbard",pos:'RB',team:'CAR',age:27,val:30,adp:88},
+  {name:"Blake Corum",pos:'RB',team:'LAR',age:23,val:38,adp:89},
+  {name:"Michael Wilson",pos:'WR',team:'ARI',age:24,val:53,adp:90},
+  {name:"Jakobi Meyers",pos:'WR',team:'JAC',age:28,val:47,adp:91},
+  {name:"Ricky Pearsall",pos:'WR',team:'SF',age:24,val:53,adp:92},
+  {name:"Tony Pollard",pos:'RB',team:'TEN',age:28,val:24,adp:93},
+  {name:"Patrick Mahomes II",pos:'QB',team:'KC',age:30,val:38,adp:94},
+  {name:"Brock Purdy",pos:'QB',team:'SF',age:25,val:50,adp:95},
+  {name:"Jordan Addison",pos:'WR',team:'MIN',age:23,val:61,adp:96},
+  {name:"Michael Pittman Jr.",pos:'WR',team:'PIT',age:27,val:53,adp:98},
+  {name:"Bo Nix",pos:'QB',team:'DEN',age:24,val:50,adp:99},
+  {name:"Wan'Dale Robinson",pos:'WR',team:'TEN',age:24,val:28,adp:100},
+  {name:"Matthew Stafford",pos:'QB',team:'LAR',age:37,val:38,adp:101},
+  {name:"Parker Washington",pos:'WR',team:'JAC',age:25,val:53,adp:102},
+  {name:"Aaron Jones Sr.",pos:'RB',team:'MIN',age:30,val:18,adp:103},
+  {name:"Dalton Kincaid",pos:'TE',team:'BUF',age:25,val:52,adp:104},
+  {name:"J.K. Dobbins",pos:'RB',team:'DEN',age:26,val:56,adp:105},
+  {name:"Oronde Gadsden II",pos:'TE',team:'LAC',age:25,val:52,adp:106},
+  {name:"Quentin Johnston",pos:'WR',team:'LAC',age:23,val:36,adp:107},
+  {name:"Zach Charbonnet",pos:'RB',team:'SEA',age:25,val:30,adp:108},
+  {name:"Jacory Croskey-Merritt",pos:'RB',team:'WAS',age:22,val:38,adp:109},
+  {name:"Jake Ferguson",pos:'TE',team:'DAL',age:25,val:52,adp:110},
+  {name:"James Conner",pos:'RB',team:'ARI',age:29,val:24,adp:111},
+  {name:"Woody Marks",pos:'RB',team:'HOU',age:24,val:30,adp:112},
+  {name:"Dallas Goedert",pos:'TE',team:'PHI',age:30,val:40,adp:115},
+  {name:"Kyler Murray",pos:'QB',team:'MIN',age:27,val:50,adp:116},
+  {name:"Stefon Diggs",pos:'WR',team:'FA',age:31,val:41,adp:117},
+  {name:"Kenneth Gainwell",pos:'RB',team:'TB',age:25,val:30,adp:118},
+  {name:"Jayden Reed",pos:'WR',team:'GB',age:25,val:28,adp:120},
+  {name:"Jauan Jennings",pos:'WR',team:'FA',age:27,val:53,adp:121},
+  {name:"Baker Mayfield",pos:'QB',team:'TB',age:30,val:38,adp:123},
+  {name:"Khalil Shakir",pos:'WR',team:'BUF',age:25,val:53,adp:125},
+  {name:"Jordan Mason",pos:'RB',team:'MIN',age:25,val:30,adp:126},
+  {name:"Travis Kelce",pos:'TE',team:'KC',age:36,val:40,adp:128},
+  {name:"Tyrone Tracy Jr.",pos:'RB',team:'NYG',age:24,val:30,adp:129},
+  {name:"Rachaad White",pos:'RB',team:'WAS',age:26,val:30,adp:130},
+  {name:"Alvin Kamara",pos:'RB',team:'NO',age:30,val:44,adp:131},
+  {name:"Braelon Allen",pos:'RB',team:'NYJ',age:21,val:38,adp:133},
+  {name:"Juwan Johnson",pos:'TE',team:'NO',age:25,val:52,adp:134},
+  {name:"Jadarian Price",pos:'RB',team:'FA',age:25,val:30,adp:135},
+  {name:"Romeo Doubs",pos:'WR',team:'NE',age:25,val:28,adp:137},
+  {name:"Hunter Henry",pos:'TE',team:'NE',age:31,val:40,adp:138},
+  {name:"Dylan Sampson",pos:'RB',team:'CLE',age:25,val:30,adp:139},
+  {name:"Travis Hunter",pos:'WR',team:'JAC',age:22,val:61,adp:142},
+  {name:"Tyjae Spears",pos:'RB',team:'TEN',age:24,val:30,adp:143},
+  {name:"Brenton Strange",pos:'TE',team:'JAC',age:25,val:52,adp:144},
+  {name:"Deebo Samuel Sr.",pos:'WR',team:'FA',age:29,val:22,adp:145},
+  {name:"George Kittle",pos:'TE',team:'SF',age:31,val:66,adp:146},
+  {name:"Isiah Pacheco",pos:'RB',team:'DET',age:26,val:30,adp:147},
+  {name:"Brandon Aiyuk",pos:'WR',team:'SF',age:27,val:53,adp:148},
+  {name:"Houston Texans",pos:'DST',team:'HOU',age:25,val:18,adp:157},
+  {name:"Denzel Boston",pos:'WR',team:'FA',age:25,val:28,adp:159},
+  {name:"Brian Robinson Jr.",pos:'RB',team:'ATL',age:25,val:30,adp:160},
+  {name:"Mark Andrews",pos:'TE',team:'BAL',age:30,val:40,adp:162},
+  {name:"Jonathon Brooks",pos:'RB',team:'CAR',age:22,val:38,adp:165},
+  {name:"Denver Broncos",pos:'DST',team:'DEN',age:25,val:18,adp:170},
+  {name:"Seattle Seahawks",pos:'DST',team:'SEA',age:25,val:18,adp:173},
+  {name:"Los Angeles Rams",pos:'DST',team:'LAR',age:25,val:18,adp:176},
+  {name:"Philadelphia Eagles",pos:'DST',team:'PHI',age:25,val:18,adp:178},
+  {name:"Minnesota Vikings",pos:'DST',team:'MIN',age:25,val:18,adp:181},
+  {name:"Brandon Aubrey",pos:'K',team:'DAL',age:31,val:10,adp:184},
+  {name:"Ka'imi Fairbairn",pos:'K',team:'HOU',age:33,val:10,adp:191},
+  {name:"Cam Little",pos:'K',team:'JAC',age:25,val:12,adp:193},
+  {name:"Cameron Dicker",pos:'K',team:'LAC',age:28,val:10,adp:194},
+  {name:"Jason Myers",pos:'K',team:'SEA',age:34,val:10,adp:201},
+  {name:"Tyler Loop",pos:'K',team:'BAL',age:25,val:12,adp:207},
+  {name:"Joe Mixon",pos:'RB',team:'FA',age:29,val:24,adp:230},
+  {name:"Justice Hill",pos:'RB',team:'BAL',age:25,val:30,adp:298}
+];;
+
+// ---- State ----
+const tradeState = { a: [], b: [] };
+
+// ---- Keeper Lookup ----
+// Build normalized name → {cost, pos} map from LEAGUE_DATA rosters
+const KEEPER_LOOKUP = (function() {
+  const map = {};
+  try {
+    Object.values(LEAGUE_DATA.rosters).forEach(roster => {
+      roster.forEach(p => {
+        const raw = p.val2026;
+        const cost = (raw && raw !== 'TBD') ? parseInt(raw) : null;
+        if (p.player) map[p.player.trim().toLowerCase()] = { cost, pos: p.pos };
+      });
+    });
+  } catch(e) {}
+  return map;
+})();
+
+// ---- Tier-based auction values from MSUFFL historical data (2022–2025) ----
+// Each tier: [expectedValue, low, high] — derived from actual league auction results
+const AUCTION_TIERS = {
+  SuperStud: [81, 65, 95],  // Elite RB or WR (Saquon, Jefferson, Chase-level)
+  RBStud:    [51, 40, 62],  // Premium RBs  (Gibbs, Achane, Taylor)
+  WRStud:    [47, 40, 65],  // Premium WRs  (Amon-Ra, Nabers, Wilson)
+  QBStud:    [17, 15, 18],  // Top QB       (Lamar, Allen, Hurts)
+  TEStud:    [30, 13, 48],  // Top TE       (Bowers, McBride)
+  RBStarter: [29, 16, 40],  // Starting RBs (Cook, Jacobs, White)
+  WRStarter: [22, 14, 37],  // Starting WRs (Higgins, Olave, Waddle)
+  QBStarter: [ 6,  4, 15],  // Starting QBs (Love, Purdy, Dak)
+  TEStarter: [ 7,  4, 13],  // Starting TEs (Ferguson, Njoku, Pitts)
+  RBDepth:   [ 4,  1, 13],  // Bench RBs
+  WRDepth:   [ 5,  1, 14],  // Bench WRs
+  QBDepth:   [ 2,  1,  4],  // Bench QBs
+  TEDepth:   [ 2,  1,  4],  // Bench TEs
+  K:         [ 2,  1,  5],  // Kicker
+  DST:       [ 3,  1, 10],  // Defense
+};
+
+// Assign a tier based on ADP + position
+// Thresholds calibrated against MSUFFL historical auction picks
+function getAuctionTier(adp, pos) {
+  if (pos === 'RB') {
+    if (adp <= 8)  return 'SuperStud';  // Bijan, CMC, Gibbs, Hall
+    if (adp <= 20) return 'RBStud';     // Achane, Saquon, Taylor, Kyren
+    if (adp <= 58) return 'RBStarter';  // Cook, Jacobs, White, Swift
+    return 'RBDepth';
+  }
+  if (pos === 'WR') {
+    if (adp <= 4)  return 'SuperStud';  // Chase, Lamb
+    if (adp <= 35) return 'WRStud';     // Jefferson, Amon-Ra, Puka, Nabers, Harrison
+    if (adp <= 78) return 'WRStarter';  // Higgins, Olave, Waddle, Flowers
+    return 'WRDepth';
+  }
+  if (pos === 'QB') {
+    if (adp <= 30) return 'QBStud';     // Lamar, Allen, Hurts, Stroud, Mahomes
+    if (adp <= 68) return 'QBStarter';  // Love, Purdy, Dak, Tua
+    return 'QBDepth';
+  }
+  if (pos === 'TE') {
+    if (adp <= 30) return 'TEStud';     // Bowers, McBride
+    if (adp <= 95) return 'TEStarter';  // LaPorta, Ferguson, Njoku, Pitts
+    return 'TEDepth';
+  }
+  if (pos === 'K')   return 'K';
+  if (pos === 'DST') return 'DST';
+  return 'WRDepth';
+}
+
+function estimateFairAuctionValue(adp, pos) {
+  return AUCTION_TIERS[getAuctionTier(adp, pos)][0];
+}
+
+function getAuctionTierLabel(name, adp, pos) {
+  const sp = SP_DATA[name];
+  if (sp && sp.t) return sp.t;
+  return getAuctionTier(adp, pos).replace(/([A-Z])/g, ' $1').trim();
+}
+
+// Next-year escalation: greater of 20% or +$4
+function nextYearCost(cost) {
+  if (!cost && cost !== 0) return null;
+  return Math.max(Math.round(cost * 1.20), cost + 4);
+}
+
+// Look up a player's 2026 keeper cost (or estimate if not in league)
+function getKeeperCost(player) {
+  // Try exact match first, then fuzzy (handles ALL-CAPS names like "JA'MARR CHASE")
+  const key = player.name.toLowerCase();
+  let entry = KEEPER_LOOKUP[key];
+  if (!entry) {
+    // Try partial match (last name)
+    const lastName = key.split(' ').slice(-1)[0];
+    entry = Object.entries(KEEPER_LOOKUP).find(([k]) => k.endsWith(lastName) && k.includes(key.split(' ')[0]))?.[1];
+  }
+  if (entry && entry.cost !== null) return entry.cost;
+  // Not in this league — estimate based on position + ADP
+  return estimateDefaultKeeperCost(player.name, player.adp, player.pos);
+}
+
+// For players not on any roster, estimate a reasonable keeper baseline
+// QBs/TEs kept at a bigger discount (structurally cheaper position); RBs/WRs closer to market
+function estimateDefaultKeeperCost(name, adp, pos) {
+  const sp = SP_DATA[name];
+  const fair = sp ? sp.f : estimateFairAuctionValue(adp, pos);
+  const discount = { QB: 0.65, TE: 0.70, RB: 0.80, WR: 0.78, K: 0.90, DST: 0.90 };
+  return Math.max(1, Math.round(fair * (discount[pos] || 0.75)));
+}
+
+// Contract surplus: what the player is "worth" vs what you pay to keep them
+// Uses per-player SP_DATA fair value when available; falls back to tier-based estimate
+function calcSurplus(player) {
+  const sp = SP_DATA[player.name];
+  const fair = sp ? sp.f : estimateFairAuctionValue(player.adp, player.pos);
+  // For keeper cost: use SP_DATA entry if it has one, else look up roster/estimate
+  const spCost = sp && sp.kc !== null ? sp.kc : null;
+  const cost = spCost !== null ? spCost : getKeeperCost(player);
+  return { cost, fair, surplus: Math.round(fair - cost) };
+}
+
+// ---- Helpers ----
+function calcRedraftScore(adp) {
+  return Math.max(0, Math.round(((200 - adp) / 199) * 99));
+}
+function calcVal(player) {
+  // Base: 50% dynasty + 50% redraft
+  const base = Math.round(player.val * 0.5 + calcRedraftScore(player.adp) * 0.5);
+  // Contract surplus bonus: each $1 of surplus ≈ +0.4 pts, capped at ±18
+  const { surplus } = calcSurplus(player);
+  const bonus = Math.max(-18, Math.min(18, Math.round(surplus * 0.4)));
+  return Math.max(1, base + bonus);
+}
+function calcWinNow(player) {
+  const ageBonus = Math.max(-10, Math.min(10, (player.age - 26) * 2));
+  return Math.min(100, Math.round(calcRedraftScore(player.adp) + ageBonus));
+}
+function calcRebuild(player) {
+  const youthBonus = Math.max(-10, Math.min(15, (28 - player.age) * 2.5));
+  return Math.min(100, Math.round(player.val + youthBonus));
+}
+function totalSide(side) {
+  if (!side.length) return 0;
+  return side.reduce((s, p) => s + calcVal(p), 0);
+}
+function totalSurplus(side) {
+  if (!side.length) return 0;
+  return side.reduce((s, p) => s + calcSurplus(p).surplus, 0);
+}
+function avgWinNow(side) {
+  if (!side.length) return 0;
+  return Math.round(side.reduce((s, p) => s + calcWinNow(p), 0) / side.length);
+}
+function avgRebuild(side) {
+  if (!side.length) return 0;
+  return Math.round(side.reduce((s, p) => s + calcRebuild(p), 0) / side.length);
+}
+function avgAge(side) {
+  if (!side.length) return 0;
+  return (side.reduce((s, p) => s + p.age, 0) / side.length).toFixed(1);
+}
+
+// ---- Search ----
+function buildDropdown(query, side) {
+  const ddId = `dropdown-${side}`;
+  const dd = document.getElementById(ddId);
+  if (!query || query.length < 2) { dd.classList.remove('open'); return; }
+  const q = query.toLowerCase();
+  const existing = tradeState[side].map(p => p.name);
+  const matches = TP.filter(p => p.name.toLowerCase().includes(q) && !existing.includes(p.name)).slice(0, 10);
+  if (!matches.length) { dd.innerHTML = '<div class="player-dropdown-item"><span class="dd-name" style="color:var(--muted)">No players found</span></div>'; dd.classList.add('open'); return; }
+  dd.innerHTML = matches.map(p => {
+    const { cost, surplus } = calcSurplus(p);
+    const surplusStr = surplus >= 0 ? `<span style="color:var(--green)">+$${surplus}</span>` : `<span style="color:var(--red)">-$${Math.abs(surplus)}</span>`;
+    const tierLabel = getAuctionTierLabel(p.name, p.adp, p.pos);
+    return `<div class="player-dropdown-item" data-name="${p.name}" data-side="${side}">
+      <span class="pos-badge pos-${p.pos}" style="font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:4px">${p.pos}</span>
+      <span class="dd-name">${p.name}</span>
+      <span class="dd-meta">${p.team} · ${tierLabel} · $${cost} keeper</span>
+      <span class="dd-val">${calcVal(p)} ${surplusStr}</span>
+    </div>`;
+  }).join('');
+  dd.classList.add('open');
+  dd.querySelectorAll('.player-dropdown-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const player = TP.find(p => p.name === item.dataset.name);
+      if (player) addPlayer(player, item.dataset.side);
+    });
+  });
+}
+
+function addPlayer(player, side) {
+  tradeState[side].push(player);
+  document.getElementById(`search-${side}`).value = '';
+  document.getElementById(`dropdown-${side}`).classList.remove('open');
+  renderSide(side);
+  updateAnalyzeBtn();
+}
+
+function removePlayer(name, side) {
+  tradeState[side] = tradeState[side].filter(p => p.name !== name);
+  renderSide(side);
+  updateAnalyzeBtn();
+  // Hide results if trade changes after analysis
+  document.getElementById('trade-results').classList.remove('visible');
+}
+
+function renderSide(side) {
+  const listEl = document.getElementById(`players-${side}`);
+  const totalEl = document.getElementById(`total-${side}`);
+  const players = tradeState[side];
+  if (!players.length) {
+    listEl.innerHTML = '<div class="trade-empty-msg">No players added yet</div>';
+    totalEl.textContent = '—';
+    return;
+  }
+  listEl.innerHTML = players.map(p => {
+    const { cost, fair, surplus } = calcSurplus(p);
+    const surplusLabel = surplus >= 0
+      ? `<span style="color:var(--green);font-size:0.72rem;font-family:'DM Mono',monospace">+$${surplus} surplus</span>`
+      : `<span style="color:var(--red);font-size:0.72rem;font-family:'DM Mono',monospace">-$${Math.abs(surplus)} over</span>`;
+    return `<div class="trade-player-chip">
+      <span class="pos-badge pos-${p.pos}" style="font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:4px">${p.pos}</span>
+      <span class="chip-name">${p.name}</span>
+      <span class="chip-meta">${p.team} · ${p.age}yo · <span style="color:var(--muted)">$${cost} keeper</span></span>
+      ${surplusLabel}
+      <span class="chip-val">${calcVal(p)}</span>
+      <button class="chip-remove" data-name="${p.name}" data-side="${side}" title="Remove">×</button>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.chip-remove').forEach(btn => {
+    btn.addEventListener('click', () => removePlayer(btn.dataset.name, btn.dataset.side));
+  });
+  const tot = totalSide(players);
+  totalEl.textContent = tot;
+}
+
+function updateAnalyzeBtn() {
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = !(tradeState.a.length > 0 && tradeState.b.length > 0);
+}
+
+// ---- Analysis ----
+function analyzeTrade() {
+  const a = tradeState.a, b = tradeState.b;
+  const totA = totalSide(a), totB = totalSide(b);
+  const wnA = avgWinNow(a), wnB = avgWinNow(b);
+  const rbA = avgRebuild(a), rbB = avgRebuild(b);
+  const ageA = avgAge(a), ageB = avgAge(b);
+  const maxTot = Math.max(totA, totB, 1);
+  const diff = totA - totB;
+  const diffPct = Math.round(Math.abs(diff) / ((totA + totB) / 2) * 100);
+
+  // ---- Value Bars ----
+  const vbEl = document.getElementById('value-bars');
+  const aIsWinner = totA >= totB;
+  vbEl.innerHTML = `
+    <div class="tvb-row">
+      <div class="tvb-label"><span class="tvb-name">Team A Gets</span><span class="tvb-score">${totA} pts</span></div>
+      <div class="tvb-bar-bg"><div class="tvb-bar-fill${aIsWinner ? '' : ' loser'}" style="width:${Math.round(totA/maxTot*100)}%"></div></div>
+    </div>
+    <div class="tvb-row">
+      <div class="tvb-label"><span class="tvb-name">Team B Gets</span><span class="tvb-score">${totB} pts</span></div>
+      <div class="tvb-bar-bg"><div class="tvb-bar-fill${!aIsWinner ? '' : ' loser'}" style="width:${Math.round(totB/maxTot*100)}%"></div></div>
+    </div>
+    <div class="tvb-diff"><strong>${diffPct < 5 ? 'Even trade' : `Team ${diff > 0 ? 'A' : 'B'} gets +${diffPct}% more value`}</strong> · ${Math.abs(diff)} point differential</div>`;
+
+  // ---- Score Grid ----
+  const surpA = totalSurplus(a), surpB = totalSurplus(b);
+  const sgEl = document.getElementById('score-grid');
+  const wnWinner = wnA >= wnB ? 'A' : 'B';
+  const rbWinner = rbA >= rbB ? 'A' : 'B';
+  const contractWinner = surpA >= surpB ? 'A' : 'B';
+  const fmtSurplus = v => v >= 0 ? `+$${v}` : `-$${Math.abs(v)}`;
+  sgEl.innerHTML = `
+    <div class="trade-score-card">
+      <div class="tsc-title">Win-Now Score</div>
+      <div class="tsc-row"><span class="tsc-team">Team A gets</span><span class="tsc-val ${wnWinner==='A'?'win':'lose'}">${wnA}</span></div>
+      <div class="tsc-row"><span class="tsc-team">Team B gets</span><span class="tsc-val ${wnWinner==='B'?'win':'lose'}">${wnB}</span></div>
+      <div><span class="tsc-badge ${wnWinner==='A'?'green':'red'}">Team ${wnWinner} wins now</span></div>
+    </div>
+    <div class="trade-score-card">
+      <div class="tsc-title">Dynasty/Rebuild Score</div>
+      <div class="tsc-row"><span class="tsc-team">Team A gets</span><span class="tsc-val ${rbWinner==='A'?'win':'lose'}">${rbA}</span></div>
+      <div class="tsc-row"><span class="tsc-team">Team B gets</span><span class="tsc-val ${rbWinner==='B'?'win':'lose'}">${rbB}</span></div>
+      <div><span class="tsc-badge ${rbWinner==='A'?'green':'red'}">Team ${rbWinner} better rebuild</span></div>
+    </div>
+    <div class="trade-score-card">
+      <div class="tsc-title">Contract Surplus</div>
+      <div class="tsc-row"><span class="tsc-team">Team A gets</span><span class="tsc-val ${contractWinner==='A'?'win':'lose'}">${fmtSurplus(surpA)}</span></div>
+      <div class="tsc-row"><span class="tsc-team">Team B gets</span><span class="tsc-val ${contractWinner==='B'?'win':'lose'}">${fmtSurplus(surpB)}</span></div>
+      <div><span class="tsc-badge ${contractWinner==='A'?'green':'red'}">Team ${contractWinner} better deals</span></div>
+    </div>
+    <div class="trade-score-card">
+      <div class="tsc-title">Avg Age</div>
+      <div class="tsc-row"><span class="tsc-team">Team A gets</span><span class="tsc-val neutral">${ageA}</span></div>
+      <div class="tsc-row"><span class="tsc-team">Team B gets</span><span class="tsc-val neutral">${ageB}</span></div>
+      <div><span class="tsc-badge yellow">${parseFloat(ageA) < parseFloat(ageB) ? 'A' : 'B'} gets younger</span></div>
+    </div>`;
+
+  // ---- Positional Notes ----
+  const pnEl = document.getElementById('pos-needs');
+  const notes = buildPosNotes(a, b);
+  pnEl.innerHTML = notes.map(n => `<div class="tpn-item"><span class="tpn-icon">${n.icon}</span><span class="tpn-text">${n.text}</span></div>`).join('') || '<div class="tpn-item"><span class="tpn-text" style="color:var(--muted)">No notable positional concerns.</span></div>';
+
+  // ---- Verdict ----
+  renderVerdict(a, b, totA, totB, wnA, wnB, rbA, rbB, diffPct, ageA, ageB, surpA, surpB);
+
+  document.getElementById('trade-results').classList.add('visible');
+  document.getElementById('trade-results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function buildPosNotes(a, b) {
+  const notes = [];
+  const posCount = (side) => side.reduce((m, p) => { m[p.pos] = (m[p.pos]||0)+1; return m; }, {});
+  const pA = posCount(a), pB = posCount(b);
+
+  // TE premium note
+  if (a.some(p=>p.pos==='TE')) notes.push({icon:'🔒', text:'<strong>TE Premium:</strong> Team A is giving up TE production — tight end scarcity makes this costly in standard leagues.'});
+  if (b.some(p=>p.pos==='TE')) notes.push({icon:'🔒', text:'<strong>TE Premium:</strong> Team B is giving up TE production — tight ends are the scarcest position in fantasy.'});
+
+  // Multi-player at same position
+  Object.entries(pA).forEach(([pos, cnt]) => { if (cnt >= 2) notes.push({icon:'⚠️', text:`Team A is giving up <strong>${cnt} ${pos}s</strong> — consider whether the depth hit is worth it.`}); });
+  Object.entries(pB).forEach(([pos, cnt]) => { if (cnt >= 2) notes.push({icon:'⚠️', text:`Team B is giving up <strong>${cnt} ${pos}s</strong> — consider whether the depth hit is worth it.`}); });
+
+  // Age-related notes
+  const youngA = a.filter(p => p.age <= 23);
+  const youngB = b.filter(p => p.age <= 23);
+  if (youngA.length) notes.push({icon:'📈', text:`Team A includes <strong>${youngA.map(p=>p.name).join(', ')}</strong> (${youngA.length === 1 ? 'age' : 'ages'} ≤23) — high upside dynasty assets.`});
+  if (youngB.length) notes.push({icon:'📈', text:`Team B includes <strong>${youngB.map(p=>p.name).join(', ')}</strong> (${youngB.length === 1 ? 'age' : 'ages'} ≤23) — high upside dynasty assets.`});
+
+  // Aging veterans
+  const oldA = a.filter(p => p.age >= 31);
+  const oldB = b.filter(p => p.age >= 31);
+  if (oldA.length) notes.push({icon:'⏳', text:`<strong>${oldA.map(p=>p.name).join(', ')}</strong> (age ${oldA.map(p=>p.age).join('/')}) — production may decline; better for win-now contexts.`});
+  if (oldB.length) notes.push({icon:'⏳', text:`<strong>${oldB.map(p=>p.name).join(', ')}</strong> (age ${oldB.map(p=>p.age).join('/')}) — production may decline; better for win-now contexts.`});
+
+  // QB note
+  const qbA = a.filter(p=>p.pos==='QB'), qbB = b.filter(p=>p.pos==='QB');
+  if (qbA.length && !qbB.length) notes.push({icon:'🏈', text:'<strong>QB-heavy trade:</strong> Team A is moving a QB. In standard ESPN leagues, QB value is often undervalued — weigh this carefully.'});
+  if (qbB.length && !qbA.length) notes.push({icon:'🏈', text:'<strong>QB-heavy trade:</strong> Team B is moving a QB. In standard ESPN leagues, quarterback value may be discounted.'});
+
+  return notes.slice(0, 5);
+}
+
+function renderVerdict(a, b, totA, totB, wnA, wnB, rbA, rbB, diffPct, ageA, ageB, surpA, surpB) {
+  const el = document.getElementById('trade-verdict');
+  const aWins = totA > totB;
+  const isClose = diffPct < 7;
+  const winner = aWins ? 'A' : 'B';
+  const loser = aWins ? 'B' : 'A';
+  const winSide = aWins ? a : b;
+  const loseSide = aWins ? b : a;
+  const topGet = winSide.sort((x,y) => calcVal(y)-calcVal(x))[0];
+  const topGive = loseSide.sort((x,y) => calcVal(y)-calcVal(x))[0];
+
+  let headline, summary, line2, line3;
+  const tags = [];
+
+  if (isClose) {
+    headline = `<span class="v-winner">Even Trade</span>`;
+    summary = `This trade is essentially a wash on paper — both sides are getting comparable value. The devil is in the details.`;
+    tags.push({label:'Fair Value', cls:'pos'});
+  } else if (diffPct < 18) {
+    headline = `<span class="v-winner">Team ${winner}</span> Wins This Trade`;
+    summary = `Team ${winner} comes out ahead by <strong>~${diffPct}%</strong>, landing better overall value in this deal.`;
+    tags.push({label:`Team ${winner} Wins`, cls:'pos'});
+    tags.push({label:`Team ${loser} Overpays`, cls:'neg'});
+  } else {
+    headline = `<span class="v-winner">Team ${winner}</span> Significantly Wins`;
+    summary = `Team ${winner} wins this trade convincingly — a <strong>${diffPct}%</strong> value gap is substantial. Team ${loser} should look for a better return.`;
+    tags.push({label:`Team ${winner} Big Win`, cls:'pos'});
+    tags.push({label:`Imbalanced`, cls:'neg'});
+  }
+
+  // Win-now vs rebuild context
+  const winNowGap = Math.abs(wnA - wnB);
+  const rebuildGap = Math.abs(rbA - rbB);
+  if (winNowGap > 10) line2 = `<strong>Win-now angle:</strong> Team ${wnA > wnB ? 'A' : 'B'} gets a bigger boost for this season — if you're in win-now mode, that's important context.`;
+  if (rebuildGap > 10) line3 = `<strong>Dynasty/rebuild angle:</strong> Team ${rbA > rbB ? 'A' : 'B'} acquires better long-term assets. If you're rebuilding, this trade ${rbA > rbB && aWins ? 'works on both counts' : 'may be the right call despite the value gap'}.`;
+
+  // Contract surplus context
+  const contractDiff = Math.abs(surpA - surpB);
+  const contractWinner = surpA >= surpB ? 'A' : 'B';
+  let contractLine = '';
+  if (contractDiff >= 5) {
+    const topSurplusPlayer = (contractWinner === 'A' ? a : b).reduce((best, p) => calcSurplus(p).surplus > calcSurplus(best).surplus ? p : best);
+    const { cost, fair, surplus } = calcSurplus(topSurplusPlayer);
+    // Note the position pricing dynamic
+    const posNote = ['QB','TE'].includes(topSurplusPlayer.pos)
+      ? `${topSurplusPlayer.pos}s are typically cheaper to keep`
+      : `${topSurplusPlayer.pos}s command higher keeper prices`;
+    contractLine = `<strong>Contract value:</strong> Team ${contractWinner} acquires better keeper deals — notably <strong>${topSurplusPlayer.name}</strong> at $${cost}/yr vs. a fair value of ~$${fair} (${posNote}). That $${surplus} surplus compounds as costs escalate each year.`;
+  }
+
+  // Age context
+  const youngWinner = parseFloat(ageA) < parseFloat(ageB) ? 'A' : 'B';
+  if (parseFloat(ageA) !== parseFloat(ageB)) {
+    tags.push({label:`Team ${youngWinner} Gets Younger`, cls:'warn'});
+  }
+  if (contractDiff >= 5) tags.push({label:`Team ${contractWinner} Better Contracts`, cls: contractWinner === winner ? 'pos' : 'warn'});
+  if (topGet) tags.push({label:topGet.pos, cls:'pos'});
+  if (topGet && topGet.age <= 23) tags.push({label:'Youth Upside', cls:'pos'});
+
+  let html = `
+    <div class="verdict-header">⚖ AI Trade Verdict</div>
+    <div class="verdict-headline">${headline}</div>
+    <div class="verdict-body">
+      <p>${summary}</p>
+      ${line2 ? `<p>${line2}</p>` : ''}
+      ${line3 ? `<p>${line3}</p>` : ''}
+      ${contractLine ? `<p>${contractLine}</p>` : ''}`;
+
+  if (topGet) html += `<p><strong>Key player:</strong> ${topGet.name} (${topGet.pos}, ${topGet.team}) is the headliner — valued at <strong>${calcVal(topGet)} pts</strong>, keeper cost <strong>$${getKeeperCost(topGet)}</strong> with a dynasty score of ${topGet.val}/100.</p>`;
+
+  html += `</div><div class="verdict-tags">${tags.map(t=>`<span class="verdict-tag ${t.cls}">${t.label}</span>`).join('')}</div>`;
+  el.innerHTML = html;
+}
+
+// ---- Event Listeners ----
+['a','b'].forEach(side => {
+  const input = document.getElementById(`search-${side}`);
+  const dd = document.getElementById(`dropdown-${side}`);
+  input.addEventListener('input', e => buildDropdown(e.target.value, side));
+  input.addEventListener('focus', e => { if (e.target.value.length >= 2) buildDropdown(e.target.value, side); });
+  document.addEventListener('click', e => {
+    if (!input.contains(e.target) && !dd.contains(e.target)) dd.classList.remove('open');
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') dd.classList.remove('open');
+  });
+});
+
+document.getElementById('analyze-btn').addEventListener('click', analyzeTrade);
+
+document.getElementById('trade-reset-btn').addEventListener('click', () => {
+  tradeState.a = []; tradeState.b = [];
+  renderSide('a'); renderSide('b');
+  updateAnalyzeBtn();
+  document.getElementById('trade-results').classList.remove('visible');
+  window.scrollTo({top: document.getElementById('page-tradeanalyzer').offsetTop - 80, behavior:'smooth'});
+});
+
+// Expose shared valuation data + utility functions for roster analysis
+window._MSU = {
+  SP_DATA, TP, KEEPER_LOOKUP,
+  calcVal, calcWinNow, calcRebuild, calcSurplus, calcRedraftScore,
+  estimateFairAuctionValue, estimateDefaultKeeperCost, totalSide
+};
+
+})(); // end trade analyzer IIFE
 </script>
 </body>
 </html>
