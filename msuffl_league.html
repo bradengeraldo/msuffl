@@ -2423,7 +2423,7 @@ window.showTeamDetail = showTeamDetail;
 // ===== ROSTER EDITOR (Phase 3a) =====
 (function() {
   const POSITIONS = ['QB','RB','WR','TE','K','D/ST'];
-  const CONTRACT_OPTIONS = ['N','Restricted FA','R1','R2','R3','R4','RFA - Playoffs'];
+  const CONTRACT_OPTIONS = ['N','Restricted FA','R1','R2','R3'];
 
   // ── Patch showTeamDetail to inject Edit button when commissioner is logged in ──
   const _orig = window.showTeamDetail;
@@ -2528,6 +2528,18 @@ window.showTeamDetail = showTeamDetail;
 
         // Update in-memory data
         LEAGUE_DATA.rosters[team] = updated;
+
+        // Recalculate budget stats from new roster
+        if (LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team]) {
+          const b = LEAGUE_DATA.budgets[team];
+          const totalKept = updated.reduce((sum, p) => {
+            const v = parseInt(p.val2025);
+            return sum + (isNaN(v) ? 0 : v);
+          }, 0);
+          b.playerCount = String(updated.length);
+          b.totalKept   = String(totalKept);
+          b.remaining   = String(parseInt(b.budget) - totalKept);
+        }
 
         const ok = await window.commSave.saveData(
           'LEAGUE_DATA', LEAGUE_DATA,
