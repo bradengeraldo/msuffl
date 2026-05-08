@@ -2459,7 +2459,7 @@ window.showTeamDetail = showTeamDetail;
     const _storedCnt  = parseInt(_bud.playerCount) || draft.length;
     const _faab       = _bud.inSeasonFaab !== undefined ? parseInt(_bud.inSeasonFaab) : null;
     // Original val2025 sum so we can track the delta
-    const _baseVal25  = draft.reduce((s, p) => s + (parseInt(p.val2025) || 0), 0);
+    const _baseVal25  = draft.reduce((s, p) => s + (parseInt(p.val2026) || 0), 0);
     const _baseCnt    = draft.length; // frozen — draft mutates but this stays fixed
 
     function calcSummary() {
@@ -2467,7 +2467,7 @@ window.showTeamDetail = showTeamDetail;
       let curVal25 = 0, curCnt = 0;
       rows.forEach(row => {
         const n = row.querySelector('.re-name');
-        const v = row.querySelector('.re-val25');
+        const v = row.querySelector('.re-val26');
         if (!n || !n.value.trim()) return;
         curCnt++;
         curVal25 += parseInt(v ? v.value : '0') || 0;
