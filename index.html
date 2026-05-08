@@ -4241,6 +4241,8 @@ window._MSU = {
 
 // ===== COMMISSIONER MODE =====
 (function() {
+  // Defer all DOM-dependent init until the full document is parsed
+  function commInit() {
   const COMM_HASH = '80f5c72672e33d781489476f986c83bfe59255f86ed499cb66b4479bfc986b19';
 
   async function sha256(msg) {
@@ -4343,6 +4345,13 @@ window._MSU = {
 
   // Expose API for Phase 3+ editors
   window.commMode = { isUnlocked, getToken, showToolbar, hideToolbar };
+  } // end commInit
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', commInit);
+  } else {
+    commInit(); // DOM already ready
+  }
 })();
 // ===== END COMMISSIONER MODE =====
 
