@@ -4376,9 +4376,9 @@ window._MSU = {
         }
 
         // Push to Firebase immediately via REST (no SDK dependency)
-        fbSet('league_data/rosters', LEAGUE_DATA.rosters);
-        fbSet('league_data/keepers2026', LEAGUE_DATA.keepers2026);
-        fbSet('league_data/budgets', LEAGUE_DATA.budgets);
+        window.fbSet && window.fbSet('league_data/rosters', LEAGUE_DATA.rosters);
+        window.fbSet && window.fbSet('league_data/keepers2026', LEAGUE_DATA.keepers2026);
+        window.fbSet && window.fbSet('league_data/budgets', LEAGUE_DATA.budgets);
         const ok = await window.commSave.saveData(
           'LEAGUE_DATA', LEAGUE_DATA,
           `Commissioner: update ${team} roster`
@@ -4556,7 +4556,7 @@ window._MSU = {
     LEAGUE_DATA.trades[yr] = (LEAGUE_DATA.trades[yr] || []).filter(t => t.received.trim() || t.manager);
 
     // Push to Firebase immediately via REST (no SDK dependency)
-    fbSet('league_data/trades', LEAGUE_DATA.trades);
+    window.fbSet && window.fbSet('league_data/trades', LEAGUE_DATA.trades);
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} trades`);
     btn.disabled = false; btn.textContent = '💾 Save';
     if (ok) { renderTradesEdit(yr); window.buildTrades && window.buildTrades(); }
@@ -4698,7 +4698,7 @@ window._MSU = {
     LEAGUE_DATA.drafts[yr] = picks.filter(p => p.player || p.team);
 
     // Push to Firebase immediately via REST (no SDK dependency)
-    fbSet('league_data/drafts', LEAGUE_DATA.drafts);
+    window.fbSet && window.fbSet('league_data/drafts', LEAGUE_DATA.drafts);
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} rookie draft`);
     btn.disabled = false; btn.textContent = '💾 Save';
     if (ok) { renderDraftEdit(yr); window.buildDraft && window.buildDraft(); }
@@ -4842,8 +4842,8 @@ window._MSU = {
   const FB_CONFIGURED = !FB_CONFIG.apiKey.startsWith('REPLACE');
   const FB_DB_URL = FB_CONFIG.databaseURL;
 
-  // REST-based write — works immediately, no SDK loading required
-  async function fbSet(path, data) {
+  // REST-based write — exposed globally so Phase 3 / roster editor can call it
+  window.fbSet = async function fbSet(path, data) {
     if (!FB_CONFIGURED || !FB_DB_URL) return;
     try {
       await fetch(`${FB_DB_URL}/${path}.json`, {
