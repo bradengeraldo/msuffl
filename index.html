@@ -2123,6 +2123,25 @@ function showPage(pageId) {
 
 navBtns.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
 
+// ── Hash-based page persistence ──────────────────────────────────────────────
+(function() {
+  const _origSP = showPage;
+  showPage = function(pageId) {
+    _origSP(pageId);
+    if (pageId) history.replaceState(null, '', location.pathname + '#' + pageId);
+  };
+  // On load, navigate to the hash page (if any)
+  const hashPage = location.hash.slice(1);
+  if (hashPage) {
+    // May run before DOM-built pages are ready; defer slightly
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => showPage(hashPage));
+    } else {
+      showPage(hashPage);
+    }
+  }
+})();
+
 // ===================== POS COLOR =====================
 function posClass(pos) {
   if (!pos) return '';
@@ -4534,7 +4553,11 @@ window._MSU = {
 
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} trades`);
     btn.disabled = false; btn.textContent = '💾 Save';
-    if (ok) { renderTradesEdit(yr); window.buildTrades && window.buildTrades(); }
+    if (ok) {
+      // Push to Firebase so all open browsers update immediately
+      if (window._fbDb) window._fbDb.ref('league_data/trades').set(LEAGUE_DATA.trades).catch(()=>{});
+      renderTradesEdit(yr); window.buildTrades && window.buildTrades();
+    }
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -4674,7 +4697,10 @@ window._MSU = {
 
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} rookie draft`);
     btn.disabled = false; btn.textContent = '💾 Save';
-    if (ok) { renderDraftEdit(yr); window.buildDraft && window.buildDraft(); }
+    if (ok) {
+      if (window._fbDb) window._fbDb.ref('league_data/drafts').set(LEAGUE_DATA.drafts).catch(()=>{});
+      renderDraftEdit(yr); window.buildDraft && window.buildDraft();
+    }
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -4834,6 +4860,7 @@ window._MSU = {
         const ldPage = document.getElementById('page-livedraft');
         if (ldPage) ldPage.classList.add('active');
         btn.classList.add('active');
+        history.replaceState(null, '', location.pathname + '#livedraft');
         // Show comm controls if unlocked
         if (window.commMode && window.commMode.isUnlocked()) {
           const ctrl = document.getElementById('ld-comm-controls');
@@ -4918,11 +4945,39 @@ window._MSU = {
       return;
     }
     subscribeToPicksFeed();
+    initDataSync();
     if (window.commMode && window.commMode.isUnlocked()) {
       const ctrl = document.getElementById('ld-comm-controls');
       if (ctrl) ctrl.style.display = '';
       wireDraftControls();
     }
+  }
+
+  /* ── Real-time data sync for trades and draft ───────────────────────────── */
+  function initDataSync() {
+    const db = window._fbDb;
+    if (!db) return;
+
+    db.ref('league_data/trades').on('value', snap => {
+      const val = snap.val();
+      if (!val) return;
+      // Don't clobber an open commissioner editor
+      if (document.querySelector('.comm-page-editbar')) return;
+      LEAGUE_DATA.trades = val;
+      if (document.querySelector('.nav-btn[data-page="trades"].active')) {
+        if (typeof buildTrades === 'function') buildTrades();
+      }
+    });
+
+    db.ref('league_data/drafts').on('value', snap => {
+      const val = snap.val();
+      if (!val) return;
+      if (document.querySelector('.comm-page-editbar')) return;
+      LEAGUE_DATA.drafts = val;
+      if (document.querySelector('.nav-btn[data-page="draft"].active')) {
+        if (typeof buildDraft === 'function') buildDraft();
+      }
+    });
   }
 
   /* ── Subscribe to real-time picks feed ───────────────────────────────────── */
