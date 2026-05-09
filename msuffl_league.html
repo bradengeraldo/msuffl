@@ -2738,14 +2738,19 @@ window.showTeamDetail = showTeamDetail;
     ).join('');
   }
 
-  /* ── Patch showPage to inject comm controls ──────────────── */
-  const _origShowPage = window.showPage;
-  window.showPage = function(pageId) {
-    _origShowPage(pageId);
-    if (window.commMode && window.commMode.isUnlocked()) {
-      setTimeout(() => commPageHook(pageId), 0);
+  /* ── Hook nav clicks via event delegation (works with local showPage ref) ── */
+  document.addEventListener('DOMContentLoaded', () => {
+    const nav = document.getElementById('main-nav');
+    if (nav) {
+      nav.addEventListener('click', e => {
+        const btn = e.target.closest('[data-page]');
+        if (!btn) return;
+        if (window.commMode && window.commMode.isUnlocked()) {
+          setTimeout(() => commPageHook(btn.dataset.page), 50);
+        }
+      });
     }
-  };
+  });
 
   function commPageHook(pageId) {
     if (pageId === 'trades')   injectTradesEditBar();
@@ -3167,8 +3172,10 @@ window.showTeamDetail = showTeamDetail;
     }
 
     // Page container
-    const pagesContainer = document.querySelector('.pages') || document.getElementById('pages');
-    if (pagesContainer) {
+    // Insert next to existing pages (no wrapper div — pages are direct children of body area)
+    const anyExistingPage = document.querySelector('.page');
+    const pagesParent = anyExistingPage ? anyExistingPage.parentNode : document.body;
+    {
       const page = document.createElement('div');
       page.className = 'page';
       page.id = 'page-livedraft';
@@ -3206,7 +3213,7 @@ window.showTeamDetail = showTeamDetail;
             <div id="ld-board" class="ld-board"></div>
           `}
         </div>`;
-      pagesContainer.appendChild(page);
+      pagesParent.appendChild(page);
     }
 
     if (FB_CONFIGURED) {
@@ -3347,7 +3354,9 @@ window.showTeamDetail = showTeamDetail;
 (function() {
   /* ── 1. Save confirmation overlay ─────────────────────────────────────── */
   // Patch commSave.saveData to show a nicer in-page toast with duration
-  if (window.commSave) {
+  // Register patcher to be called once commSave is available (set in commInit)
+  window._applySaveOverlayPatch = function() {
+    if (!window.commSave || window.commSave._overlayPatched) return;
     const _origSave = window.commSave.saveData;
     window.commSave.saveData = async function(varName, newData, message) {
       showSaveOverlay('Saving to GitHub…');
@@ -3355,7 +3364,10 @@ window.showTeamDetail = showTeamDetail;
       hideSaveOverlay(result);
       return result;
     };
-  }
+    window.commSave._overlayPatched = true;
+  };
+  // Try immediately in case commSave is somehow already set
+  if (window.commSave) window._applySaveOverlayPatch();
 
   let _saveOverlayEl = null;
   function showSaveOverlay(msg) {
@@ -3517,6 +3529,8 @@ window.showTeamDetail = showTeamDetail;
   if (isUnlocked() && getToken()) showToolbar();
 
   // Expose API for Phase 3+ editors
+  // Apply Phase 5 save overlay patch now that commSave is defined
+  if (window._applySaveOverlayPatch) window._applySaveOverlayPatch();
   window.commMode = { isUnlocked, getToken, showToolbar, hideToolbar };
   } // end commInit
 
