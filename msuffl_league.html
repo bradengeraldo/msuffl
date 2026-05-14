@@ -3410,8 +3410,9 @@ window.showTeamDetail = showTeamDetail;
           if (document.querySelector('.nav-btn[data-page="trades"].active') && typeof buildTrades === 'function') buildTrades(); }
         if (data.drafts)  { LEAGUE_DATA.drafts  = data.drafts;
           if (document.querySelector('.nav-btn[data-page="draft"].active') && typeof buildDraft === 'function') buildDraft(); }
+        if (data.budgets) { LEAGUE_DATA.budgets = data.budgets; }
         if (data.rosters) { LEAGUE_DATA.rosters = data.rosters;
-          if (document.querySelector('.nav-btn[data-page="rosters"].active') && typeof buildRosters === 'function') buildRosters(); }
+          if (typeof buildRosters === 'function') buildRosters(); }
       } catch(e) { /* ignore */ }
     }
 
@@ -3873,6 +3874,9 @@ window.showTeamDetail = showTeamDetail;
         .sort((a, b) => (a.pickNum || 0) - (b.pickNum || 0));
 
       rebuildRostersFromPicks(_allPicks);
+
+      // Re-render rosters page live so picks appear instantly
+      if (typeof buildRosters === 'function') buildRosters();
 
       if (window.commMode && window.commMode.isUnlocked()) {
         window.fbSet && window.fbSet('league_data/rosters',  LEAGUE_DATA.rosters);
