@@ -1689,6 +1689,19 @@
   .ld-pick-team { font-size:10px; color:var(--text-muted); }
   .ld-pick-bid { font-size:12px; font-weight:700; color:var(--green); margin-top:3px; }
 
+  /* Pick edit/delete controls */
+  .ld-pick-card { position:relative; }
+  .ld-pick-actions { display:none; position:absolute; top:3px; right:3px; gap:2px; }
+  .ld-board.ld-comm-active .ld-pick-actions { display:flex; }
+  .ld-pick-act-btn { background:none; border:none; cursor:pointer; font-size:10px; padding:1px 3px; border-radius:3px; color:var(--text-muted); line-height:1.4; }
+  .ld-pick-act-btn:hover { background:var(--surface3); color:var(--text); }
+  .ld-pick-act-btn.del:hover { color:#e74c3c; }
+  .ld-pick-card.ld-editing { width:190px; border-color:var(--green); }
+  .ld-edit-field { background:var(--surface3); color:var(--text); border:1px solid var(--border-bright); border-radius:4px; padding:3px 5px; font-size:11px; width:100%; margin-bottom:3px; box-sizing:border-box; font-family:inherit; }
+  .ld-edit-actions { display:flex; gap:4px; margin-top:2px; }
+  .ld-edit-save-btn { background:var(--green-dark); color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; flex:1; }
+  .ld-edit-cancel-btn { background:none; border:1px solid var(--border); border-radius:4px; padding:3px 6px; font-size:11px; cursor:pointer; color:var(--text-muted); }
+
   /* Phase 5 – Polish */
   .comm-save-overlay {
     position: fixed; bottom: 60px; right: 20px; z-index: 9999;
@@ -4995,6 +5008,11 @@ window._MSU = {
       document.getElementById('ld-status-bar').textContent = '⚠ Firebase connection failed: ' + e.message;
       return;
     }
+    // Snapshot pre-draft rosters/budgets so edits/deletes can rebuild cleanly
+    if (!window._ldBaseRosters) {
+      window._ldBaseRosters = JSON.parse(JSON.stringify(LEAGUE_DATA.rosters || {}));
+      window._ldBaseBudgets  = JSON.parse(JSON.stringify(LEAGUE_DATA.budgets  || {}));
+    }
     subscribeToPicksFeed();
     if (window.commMode && window.commMode.isUnlocked()) {
       const ctrl = document.getElementById('ld-comm-controls');
@@ -5044,22 +5062,63 @@ window._MSU = {
   }
 
   /* ── Subscribe to real-time picks feed ───────────────────────────────────── */
+  let _allPicks = [];
+
   function subscribeToPicksFeed() {
-    renderTeamPanels(); // show teams immediately before first pick arrives
+    renderTeamPanels();
     const ref = window._fbDb.ref('live_draft/picks');
     ref.on('value', snap => {
-      const picks = snap.val() ? Object.values(snap.val()) : [];
-      renderBoard(picks);
+      const raw = snap.val() || {};
+      _allPicks = Object.entries(raw)
+        .map(([key, val]) => ({ ...val, _key: key }))
+        .sort((a, b) => (a.pickNum || 0) - (b.pickNum || 0));
+
+      rebuildRostersFromPicks(_allPicks);
+
+      // Commissioner's client pushes updated rosters/budgets to Firebase
+      if (window.commMode && window.commMode.isUnlocked()) {
+        window.fbSet && window.fbSet('league_data/rosters',  LEAGUE_DATA.rosters);
+        window.fbSet && window.fbSet('league_data/budgets',  LEAGUE_DATA.budgets);
+        window.fbSet && window.fbSet('league_data/_version', Date.now());
+      }
+
+      renderBoard(_allPicks);
+      renderTeamPanels();
+
       const statusEl = document.getElementById('ld-status-bar');
       if (statusEl) {
-        if (picks.length === 0) {
+        if (_allPicks.length === 0) {
           statusEl.innerHTML = '<span style="color:var(--text-muted)">Draft has not started yet.</span>';
         } else {
-          const lastPick = picks[picks.length-1];
-          statusEl.innerHTML = `<strong>Pick ${picks.length}</strong> — on the clock next`;
+          statusEl.innerHTML = `<strong>Pick ${_allPicks.length}</strong> — on the clock next`;
         }
       }
     });
+  }
+
+  /* ── Rebuild LEAGUE_DATA rosters+budgets from base keepers + all picks ───── */
+  function rebuildRostersFromPicks(picks) {
+    if (!window._ldBaseRosters) return;
+    LEAGUE_DATA.rosters = JSON.parse(JSON.stringify(window._ldBaseRosters));
+    LEAGUE_DATA.budgets  = JSON.parse(JSON.stringify(window._ldBaseBudgets));
+    for (const p of picks) {
+      if (!p.team) continue;
+      if (!LEAGUE_DATA.rosters[p.team]) LEAGUE_DATA.rosters[p.team] = [];
+      LEAGUE_DATA.rosters[p.team].push({
+        player: p.player || '', pos: p.pos || '',
+        val2026: String(p.bid || 0), val2025: '0', rookieDeal: 'N'
+      });
+    }
+    for (const team of Object.keys(LEAGUE_DATA.budgets || {})) {
+      const b      = LEAGUE_DATA.budgets[team];
+      const roster = LEAGUE_DATA.rosters[team] || [];
+      const totalKept = roster.reduce((s, r) => s + (parseInt(r.val2026) || 0), 0);
+      const budget    = parseInt(b.budget) || 200;
+      b.totalKept    = String(totalKept);
+      b.playerCount  = String(roster.length);
+      b.remaining    = String(budget - totalKept);
+      b.inSeasonFaab = String(budget - totalKept + 25);
+    }
   }
 
   /* ── Render team sidebar panels ─────────────────────────────────────────── */
@@ -5114,12 +5173,13 @@ window._MSU = {
   function renderBoard(picks) {
     const board = document.getElementById('ld-board');
     if (!board) return;
-    renderTeamPanels();
+    const isComm = !!(window.commMode && window.commMode.isUnlocked());
+    board.className = 'ld-board' + (isComm ? ' ld-comm-active' : '');
     if (!picks.length) {
       board.innerHTML = '<div class="te-empty" style="text-align:center;padding:32px">Waiting for the draft to begin…</div>';
       return;
     }
-    // Group into rounds of 12
+    const teamOpts = (LEAGUE_DATA.teams||[]).map(t=>`<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
     const rounds = [];
     for (let i = 0; i < picks.length; i += 12) rounds.push(picks.slice(i, i+12));
     board.innerHTML = rounds.map((round, ri) => `
@@ -5127,8 +5187,12 @@ window._MSU = {
         <div class="ld-round-label">Round ${ri+1}</div>
         <div class="ld-picks-row">
           ${round.map((p, pi) => `
-            <div class="ld-pick-card">
-              <div class="ld-pick-num">${ri*12+pi+1}</div>
+            <div class="ld-pick-card" data-key="${escHtml(p._key||'')}">
+              <div class="ld-pick-num">#${ri*12+pi+1}</div>
+              <div class="ld-pick-actions">
+                <button class="ld-pick-act-btn edit" title="Edit">✏</button>
+                <button class="ld-pick-act-btn del"  title="Delete">✕</button>
+              </div>
               <div class="ld-pick-pos pos-${(p.pos||'').toLowerCase().replace('/','')}">${p.pos||''}</div>
               <div class="ld-pick-player">${escHtml(p.player||'')}</div>
               <div class="ld-pick-team">${escHtml(p.team||'')}</div>
@@ -5136,6 +5200,78 @@ window._MSU = {
             </div>`).join('')}
         </div>
       </div>`).join('');
+
+    if (isComm) {
+      board.querySelectorAll('.ld-pick-act-btn.edit').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const card = btn.closest('.ld-pick-card');
+          const pick = _allPicks.find(p => p._key === card.dataset.key);
+          if (pick) openEditCard(card, pick, teamOpts);
+        });
+      });
+      board.querySelectorAll('.ld-pick-act-btn.del').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const card = btn.closest('.ld-pick-card');
+          const pick = _allPicks.find(p => p._key === card.dataset.key);
+          if (pick && confirm(`Delete pick #${pick.pickNum}: ${pick.player} → ${pick.team}?`)) {
+            deletePick(pick._key);
+          }
+        });
+      });
+    }
+  }
+
+  /* ── Inline edit a pick card ─────────────────────────────────────────────── */
+  function openEditCard(card, pick, teamOpts) {
+    const pickNumText = card.querySelector('.ld-pick-num').textContent;
+    card.classList.add('ld-editing');
+    const selTeam = teamOpts.replace(`value="${escHtml(pick.team)}"`, `value="${escHtml(pick.team)}" selected`);
+    const posOpts = ['QB','RB','WR','TE','K','D/ST'].map(p =>
+      `<option value="${p}"${p===pick.pos?' selected':''}>${p}</option>`).join('');
+    card.innerHTML = `
+      <div class="ld-pick-num">${pickNumText}</div>
+      <select class="ld-edit-field ld-et">${selTeam}</select>
+      <input  class="ld-edit-field ld-ep" value="${escHtml(pick.player||'')}" placeholder="Player name" />
+      <select class="ld-edit-field ld-eo">${posOpts}</select>
+      <input  class="ld-edit-field ld-eb" type="number" min="1" value="${pick.bid||''}" placeholder="Auction $" />
+      <div class="ld-edit-actions">
+        <button class="ld-edit-save-btn">✅ Save</button>
+        <button class="ld-edit-cancel-btn">Cancel</button>
+      </div>`;
+
+    card.querySelector('.ld-edit-cancel-btn').addEventListener('click', () => renderBoard(_allPicks));
+
+    card.querySelector('.ld-edit-save-btn').addEventListener('click', async () => {
+      const newTeam   = card.querySelector('.ld-et').value;
+      const newPlayer = card.querySelector('.ld-ep').value.trim();
+      const newPos    = card.querySelector('.ld-eo').value;
+      const newBid    = parseInt(card.querySelector('.ld-eb').value);
+      if (!newTeam)           { alert('Please select a team.'); return; }
+      if (!newPlayer)         { alert('Please enter a player name.'); return; }
+      if (!newPos)            { alert('Please select a position.'); return; }
+      if (!newBid || newBid < 1) { alert('Please enter an auction value ($1 or more).'); return; }
+      const saveBtn = card.querySelector('.ld-edit-save-btn');
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+      try {
+        await window._fbDb.ref(`live_draft/picks/${pick._key}`).update({
+          team: newTeam, player: newPlayer, pos: newPos, bid: newBid
+        });
+        // listener will re-render automatically
+      } catch(e) {
+        alert('Failed to save: ' + e.message);
+        saveBtn.disabled = false; saveBtn.textContent = '✅ Save';
+      }
+    });
+  }
+
+  /* ── Delete a single pick ────────────────────────────────────────────────── */
+  async function deletePick(key) {
+    try {
+      await window._fbDb.ref(`live_draft/picks/${key}`).remove();
+      // listener re-renders automatically
+    } catch(e) { alert('Failed to delete pick: ' + e.message); }
   }
 
   /* ── Commissioner draft controls ─────────────────────────────────────────── */
@@ -5143,57 +5279,23 @@ window._MSU = {
     const submitBtn = document.getElementById('ld-submit-pick');
     if (!submitBtn || submitBtn._wired) return;
     submitBtn._wired = true;
-    document.getElementById('ld-submit-pick')?.addEventListener('click', async () => {
+
+    document.getElementById('ld-submit-pick').addEventListener('click', async () => {
       const team   = document.getElementById('ld-pick-team').value;
       const player = document.getElementById('ld-pick-player').value.trim();
       const pos    = document.getElementById('ld-pick-pos').value;
-      const bid    = parseInt(document.getElementById('ld-pick-bid').value) || null;
-      if (!team || !player) { alert('Please select a team and enter a player name.'); return; }
+      const bid    = parseInt(document.getElementById('ld-pick-bid').value);
+      if (!team)            { alert('Please select a team.'); return; }
+      if (!player)          { alert('Please enter a player name.'); return; }
+      if (!pos)             { alert('Please select a position.'); return; }
       if (!bid || bid < 1)  { alert('Please enter an auction value ($1 or more).'); return; }
       const btn = document.getElementById('ld-submit-pick');
       btn.disabled = true; btn.textContent = 'Submitting…';
       try {
-        // 1. Push pick to live_draft/picks in Firebase
         const picksRef = window._fbDb.ref('live_draft/picks');
-        const snap     = await picksRef.once('value');
-        const existing = snap.val() ? Object.values(snap.val()) : [];
-        const newPick  = { team, player, pos, bid, pickNum: existing.length + 1, ts: Date.now() };
+        const newPick  = { team, player, pos, bid, pickNum: _allPicks.length + 1, ts: Date.now() };
         await picksRef.push(newPick);
-
-        // 2. Add player to LEAGUE_DATA.rosters
-        if (!LEAGUE_DATA.rosters[team]) LEAGUE_DATA.rosters[team] = [];
-        LEAGUE_DATA.rosters[team].push({
-          player,
-          pos,
-          val2026: String(bid),
-          val2025: '0',
-          rookieDeal: 'N'
-        });
-
-        // 3. Recalculate and update budget for this team
-        if (LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team]) {
-          const b       = LEAGUE_DATA.budgets[team];
-          const roster  = LEAGUE_DATA.rosters[team];
-          const totalKept = roster.reduce((s, p) => s + (parseInt(p.val2026) || 0), 0);
-          const playerCount = roster.length;
-          const budget    = parseInt(b.budget) || 200;
-          const remaining = budget - totalKept;
-          b.totalKept    = String(totalKept);
-          b.playerCount  = String(playerCount);
-          b.remaining    = String(remaining);
-          b.inSeasonFaab = String(remaining + 25);
-        }
-
-        // 4. Push rosters + budgets to Firebase immediately
-        const _ts = Date.now();
-        window.fbSet && window.fbSet('league_data/rosters',  LEAGUE_DATA.rosters);
-        window.fbSet && window.fbSet('league_data/budgets',  LEAGUE_DATA.budgets);
-        window.fbSet && window.fbSet('league_data/_version', _ts);
-
-        // 5. Refresh team panels
-        renderTeamPanels();
-
-        // 6. Clear inputs
+        // listener handles roster rebuild + Firebase push
         document.getElementById('ld-pick-team').value   = '';
         document.getElementById('ld-pick-player').value = '';
         document.getElementById('ld-pick-bid').value    = '';
@@ -5201,11 +5303,10 @@ window._MSU = {
       btn.disabled = false; btn.textContent = '✅ Submit Pick';
     });
 
-    document.getElementById('ld-reset-draft')?.addEventListener('click', async () => {
+    document.getElementById('ld-reset-draft').addEventListener('click', async () => {
       if (!confirm('Reset the entire draft board? This cannot be undone.')) return;
       try {
         await window._fbDb.ref('live_draft/picks').remove();
-        renderTeamPanels();
       } catch(e) { alert('Failed to reset: ' + e.message); }
     });
   }
