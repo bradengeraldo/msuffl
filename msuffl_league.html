@@ -1243,6 +1243,27 @@
   .ld-edit-save-btn { background:var(--green-dark); color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; flex:1; }
   .ld-edit-cancel-btn { background:none; border:1px solid var(--border); border-radius:4px; padding:3px 6px; font-size:11px; cursor:pointer; color:var(--text-muted); }
 
+  /* Player pool – status bar + top available panel */
+  .ld-pool-status { font-size:11px; color:var(--text-muted); margin-bottom:8px; min-height:18px; }
+  .ld-pool-status.loading { color:var(--green); }
+  .ld-pool-status.error   { color:#e74c3c; }
+  .ld-top-available { margin-top:18px; }
+  .ld-top-avail-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:10px; opacity:0.75; }
+  .ld-top-pos-grid { display:flex; gap:8px; flex-wrap:wrap; }
+  .ld-top-pos { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:110px; flex:1; }
+  .ld-top-pos-hdr { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+  .ld-top-pos-hdr.pos-qb  { color:var(--qb);  border-color:var(--qb);  }
+  .ld-top-pos-hdr.pos-rb  { color:var(--rb);  border-color:var(--rb);  }
+  .ld-top-pos-hdr.pos-wr  { color:var(--wr);  border-color:var(--wr);  }
+  .ld-top-pos-hdr.pos-te  { color:var(--te);  border-color:var(--te);  }
+  .ld-top-pos-hdr.pos-dst { color:var(--dst); border-color:var(--dst); }
+  .ld-top-pos-hdr.pos-k   { color:var(--k);   border-color:var(--k);   }
+  .ld-top-player { display:flex; align-items:baseline; gap:5px; padding:3px 0; font-size:11px; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .ld-top-player:last-child { border-bottom:none; }
+  .ld-top-rank   { color:var(--text-muted); font-size:10px; width:16px; flex-shrink:0; text-align:right; }
+  .ld-top-pname  { flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ld-top-pteam  { color:var(--text-muted); font-size:10px; flex-shrink:0; }
+
   /* Phase 5 – Polish */
   .comm-save-overlay {
     position: fixed; bottom: 60px; right: 20px; z-index: 9999;
@@ -3297,7 +3318,8 @@ window.showTeamDetail = showTeamDetail;
                   <option value="">— Select team on the clock —</option>
                   ${(LEAGUE_DATA.teams||[]).map(t=>`<option value="${t}">${t}</option>`).join('')}
                 </select>
-                <input id="ld-pick-player" class="re-input" placeholder="Player name" style="width:200px" />
+                <input id="ld-pick-player" class="re-input" placeholder="Player name" style="width:200px" list="ld-players-list" autocomplete="off" />
+                <datalist id="ld-players-list"></datalist>
                 <select id="ld-pick-pos" class="comm-year-sel">
                   <option>QB</option><option>RB</option><option>WR</option>
                   <option>TE</option><option>K</option><option>D/ST</option>
@@ -3312,7 +3334,9 @@ window.showTeamDetail = showTeamDetail;
                 <div class="ld-tc-panel-label">Teams</div>
               </div>
               <div class="ld-center">
+                <div id="ld-pool-status" class="ld-pool-status"></div>
                 <div id="ld-board" class="ld-board"></div>
+                <div id="ld-top-available" class="ld-top-available"></div>
               </div>
               <div class="ld-team-panel" id="ld-panel-right">
                 <div class="ld-tc-panel-label">Teams</div>
@@ -3358,6 +3382,7 @@ window.showTeamDetail = showTeamDetail;
       window._ldBaseBudgets  = JSON.parse(JSON.stringify(LEAGUE_DATA.budgets  || {}));
     }
     subscribeToPicksFeed();
+    fetchPlayerPool();
     if (window.commMode && window.commMode.isUnlocked()) {
       const ctrl = document.getElementById('ld-comm-controls');
       if (ctrl) ctrl.style.display = '';
@@ -3407,6 +3432,154 @@ window.showTeamDetail = showTeamDetail;
 
   /* ── Subscribe to real-time picks feed ───────────────────────────────────── */
   let _allPicks = [];
+  let _ldPlayerPool = []; // [{name, pos, nflTeam, rank}]
+
+  /* ── Player pool helpers ─────────────────────────────────────────────────── */
+
+  function normalizeName(n) {
+    return (n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  function normalizePos(p) {
+    if (!p) return '';
+    p = p.toUpperCase().trim();
+    if (p === 'DEF' || p === 'DST' || p === 'D/ST') return 'D/ST';
+    if (p === 'K')   return 'K';
+    return p; // QB, RB, WR, TE
+  }
+
+  // Update the <datalist> with available (un-rostered) players
+  function updatePlayerDropdown() {
+    const dl = document.getElementById('ld-players-list');
+    if (!dl) return;
+    const avail = getAvailablePlayers();
+    dl.innerHTML = avail
+      .map(p => `<option value="${escHtml(p.name)}" data-pos="${escHtml(p.pos)}">${escHtml(p.name)} (${escHtml(p.pos)}${p.nflTeam ? ' – ' + escHtml(p.nflTeam) : ''})</option>`)
+      .join('');
+  }
+
+  // Return pool players not already on any roster
+  function getAvailablePlayers() {
+    const rostered = new Set();
+    for (const roster of Object.values(LEAGUE_DATA.rosters || {})) {
+      for (const r of roster) {
+        if (r.player) rostered.add(normalizeName(r.player));
+      }
+    }
+    return _ldPlayerPool.filter(p => !rostered.has(normalizeName(p.name)));
+  }
+
+  // Render top-5 per position panel below the draft board
+  function renderTopAvailable() {
+    const el = document.getElementById('ld-top-available');
+    if (!el) return;
+    if (!_ldPlayerPool.length) { el.innerHTML = ''; return; }
+    const avail = getAvailablePlayers();
+    const positions = ['QB', 'RB', 'WR', 'TE', 'D/ST', 'K'];
+    const posMap = {};
+    for (const pos of positions) posMap[pos] = [];
+    for (const p of avail) {
+      const pos = p.pos;
+      if (posMap[pos] && posMap[pos].length < 5) posMap[pos].push(p);
+    }
+    const posCss = { 'QB':'pos-qb','RB':'pos-rb','WR':'pos-wr','TE':'pos-te','D/ST':'pos-dst','K':'pos-k' };
+    el.innerHTML = `
+      <div class="ld-top-avail-hdr">Top Available by Position</div>
+      <div class="ld-top-pos-grid">
+        ${positions.map(pos => `
+          <div class="ld-top-pos">
+            <div class="ld-top-pos-hdr ${posCss[pos]||''}">${pos}</div>
+            ${posMap[pos].length === 0
+              ? '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">—</div>'
+              : posMap[pos].map((p, i) => `
+                <div class="ld-top-player">
+                  <span class="ld-top-rank">${p.rank || (i+1)}</span>
+                  <span class="ld-top-pname">${escHtml(p.name)}</span>
+                  ${p.nflTeam ? `<span class="ld-top-pteam">${escHtml(p.nflTeam)}</span>` : ''}
+                </div>`).join('')}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function updatePoolStatus(msg, cls) {
+    const el = document.getElementById('ld-pool-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'ld-pool-status' + (cls ? ' ' + cls : '');
+  }
+
+  // Parse FantasyPros ecrData blob from raw HTML
+  function parseFPData(html) {
+    const m = html.match(/var\s+ecrData\s*=\s*(\{[\s\S]*?\});\s*\n/);
+    if (!m) return null;
+    try {
+      const obj = JSON.parse(m[1]);
+      const players = obj.players || [];
+      return players.map((p, i) => ({
+        name:    p.player_name  || p.name || '',
+        pos:     normalizePos(p.player_position_id || p.pos || ''),
+        nflTeam: p.player_team_id || p.team || '',
+        rank:    p.rank_ecr || (i + 1)
+      })).filter(p => p.name && p.pos);
+    } catch(e) { return null; }
+  }
+
+  // Parse Sleeper API response into our pool format
+  function parseSleeperData(data) {
+    const validPos = new Set(['QB','RB','WR','TE','K','DEF']);
+    return Object.values(data)
+      .filter(p => p && p.active && p.full_name && validPos.has(p.position))
+      .map((p, i) => ({
+        name:    p.full_name,
+        pos:     normalizePos(p.position),
+        nflTeam: p.team || '',
+        rank:    p.search_rank || 9999
+      }))
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 500); // top 500 is plenty
+  }
+
+  // Fetch player pool: try FantasyPros via CORS proxy, fall back to Sleeper
+  async function fetchPlayerPool() {
+    updatePoolStatus('Loading player pool…', 'loading');
+    const FP_URL = 'https://www.fantasypros.com/nfl/rankings/half-point-ppr-cheatsheets.php';
+    const PROXY  = 'https://corsproxy.io/?url=';
+
+    // --- Attempt 1: FantasyPros via corsproxy.io ---
+    try {
+      const resp = await fetch(PROXY + encodeURIComponent(FP_URL), { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) {
+        const html = await resp.text();
+        const players = parseFPData(html);
+        if (players && players.length > 10) {
+          _ldPlayerPool = players;
+          updatePoolStatus(`Player pool loaded (${players.length} players from FantasyPros)`);
+          updatePlayerDropdown();
+          renderTopAvailable();
+          return;
+        }
+      }
+    } catch(e) { /* fall through */ }
+
+    // --- Attempt 2: Sleeper API (free, no CORS issues) ---
+    try {
+      updatePoolStatus('FantasyPros unavailable — loading from Sleeper…', 'loading');
+      const resp = await fetch('https://api.sleeper.app/v1/players/nfl', { signal: AbortSignal.timeout(12000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        const players = parseSleeperData(data);
+        if (players.length > 10) {
+          _ldPlayerPool = players;
+          updatePoolStatus(`Player pool loaded (${players.length} players from Sleeper)`);
+          updatePlayerDropdown();
+          renderTopAvailable();
+          return;
+        }
+      }
+    } catch(e) { /* fall through */ }
+
+    updatePoolStatus('Could not load player pool — type player names manually.', 'error');
+  }
 
   function subscribeToPicksFeed() {
     renderTeamPanels();
@@ -3427,6 +3600,8 @@ window.showTeamDetail = showTeamDetail;
 
       renderBoard(_allPicks);
       renderTeamPanels();
+      updatePlayerDropdown();
+      renderTopAvailable();
 
       const statusEl = document.getElementById('ld-status-bar');
       if (statusEl) {
