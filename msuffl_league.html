@@ -3913,7 +3913,7 @@ window.showTeamDetail = showTeamDetail;
     const byPos = {};
     for (const pos of positions) byPos[pos] = [];
     for (const p of avail) {
-      const key = p.pos.replace(/\d+$/, '').toUpperCase();
+      const key = p.pos.replace(/\d+$/, '').toUpperCase().replace('D/ST', 'DST');
       if (byPos[key]) byPos[key].push(p);
     }
     container.innerHTML = '<div class="ld-top-avail-hdr">Top Available by Position</div>' +
