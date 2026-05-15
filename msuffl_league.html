@@ -3434,7 +3434,9 @@ window.showTeamDetail = showTeamDetail;
 
   /* ── Subscribe to real-time picks feed ───────────────────────────────────── */
   let _allPicks = [];
-  let _ldPlayerPool = [{"name":"Bijan Robinson","pos":"RB","nflTeam":"ATL","rank":1},
+  let _ldPlayerPool = [];
+  function fetchPlayerPool() {
+    _ldPlayerPool = [{"name":"Bijan Robinson","pos":"RB","nflTeam":"ATL","rank":1},
     {"name":"Ja'Marr Chase","pos":"WR","nflTeam":"CIN","rank":2},
     {"name":"Jahmyr Gibbs","pos":"RB","nflTeam":"DET","rank":3},
     {"name":"Puka Nacua","pos":"WR","nflTeam":"LAR","rank":4},
