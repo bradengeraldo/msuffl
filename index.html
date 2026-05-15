@@ -5543,6 +5543,7 @@ window._MSU = {
 
       renderBoard(_allPicks);
       renderTeamPanels();
+      updateTeamDropdown();
       updatePlayerDropdown();
       renderTopAvailable();
 
@@ -5735,6 +5736,30 @@ window._MSU = {
     } catch(e) { alert('Failed to delete pick: ' + e.message); }
   }
 
+  /* ── Refresh team dropdown – disable maxed-out teams ────────────────────── */
+  function updateTeamDropdown() {
+    const sel = document.getElementById('ld-pick-team');
+    if (!sel) return;
+    const prev = sel.value;
+    const teams = (LEAGUE_DATA.teams || Object.keys(LEAGUE_DATA.rosters || {})).slice().sort();
+    sel.innerHTML = '<option value="">— Select team on the clock —</option>' +
+      teams.map(t => {
+        const b = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[t];
+        const roster  = LEAGUE_DATA.rosters[t] || [];
+        const kept    = b ? parseInt(b.totalKept)   || 0 : 0;
+        const players = b ? parseInt(b.playerCount) || roster.length : roster.length;
+        const maxed   = players >= 16 || kept >= 200;
+        const label   = maxed
+          ? `${t} — FULL (${players} players / $${kept})`
+          : t;
+        return `<option value="${escHtml(t)}"${maxed ? ' disabled' : ''}>${escHtml(label)}</option>`;
+      }).join('');
+    // Restore previous selection if it's still valid
+    if (prev && [...sel.options].some(o => o.value === prev && !o.disabled)) {
+      sel.value = prev;
+    }
+  }
+
   /* ── Commissioner draft controls ─────────────────────────────────────────── */
   function wireDraftControls() {
     const submitBtn = document.getElementById('ld-submit-pick');
@@ -5750,6 +5775,13 @@ window._MSU = {
       if (!player)          { alert('Please enter a player name.'); return; }
       if (!pos)             { alert('Please select a position.'); return; }
       if (!bid || bid < 1)  { alert('Please enter an auction value ($1 or more).'); return; }
+      // Block maxed-out teams
+      const _tb = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
+      const _tr = LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[team] || [];
+      const _tkept    = _tb ? parseInt(_tb.totalKept)   || 0 : 0;
+      const _tplayers = _tb ? parseInt(_tb.playerCount) || _tr.length : _tr.length;
+      if (_tplayers >= 16) { alert(`${team} already has ${_tplayers} players (max 16). Pick a different team.`); return; }
+      if (_tkept >= 200)   { alert(`${team} is at or over the $200 budget (currently $${_tkept}). Pick a different team.`); return; }
       const btn = document.getElementById('ld-submit-pick');
       btn.disabled = true; btn.textContent = 'Submitting…';
       try {
