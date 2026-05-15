@@ -3359,10 +3359,15 @@ window.showTeamDetail = showTeamDetail;
     const sdkScript = document.createElement('script');
     sdkScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
     sdkScript.onload = () => {
-      const dbScript = document.createElement('script');
-      dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
-      dbScript.onload = () => { window._fbLoaded = true; initLiveDraft(); };
-      document.head.appendChild(dbScript);
+      const authScript = document.createElement('script');
+      authScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js';
+      authScript.onload = () => {
+        const dbScript = document.createElement('script');
+        dbScript.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+        dbScript.onload = () => { window._fbLoaded = true; initLiveDraft(); };
+        document.head.appendChild(dbScript);
+      };
+      document.head.appendChild(authScript);
     };
     document.head.appendChild(sdkScript);
   }
@@ -4360,7 +4365,8 @@ window.showTeamDetail = showTeamDetail;
 (function() {
   // Defer all DOM-dependent init until the full document is parsed
   function commInit() {
-  const COMM_HASH = '80f5c72672e33d781489476f986c83bfe59255f86ed499cb66b4479bfc986b19';
+  const COMM_HASH  = '80f5c72672e33d781489476f986c83bfe59255f86ed499cb66b4479bfc986b19';
+  const COMM_EMAIL = 'commissioner@msuffl.com'; // must match the account created in Firebase console
 
   async function sha256(msg) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -4389,6 +4395,9 @@ window.showTeamDetail = showTeamDetail;
     sessionStorage.removeItem('comm_unlocked');
     sessionStorage.removeItem('comm_token');
     hideToolbar();
+    if (window._fbApp && typeof firebase !== 'undefined' && firebase.auth) {
+      firebase.auth().signOut().catch(() => {});
+    }
   }
 
   // Lock button
@@ -4416,6 +4425,15 @@ window.showTeamDetail = showTeamDetail;
     const errEl = document.getElementById('comm-login-error');
     if (hash === COMM_HASH) {
       errEl.style.display = 'none';
+      // Sign in to Firebase Auth so writes are authenticated
+      if (window._fbApp && typeof firebase !== 'undefined' && firebase.auth) {
+        try {
+          await firebase.auth().signInWithEmailAndPassword(COMM_EMAIL, pw);
+        } catch(e) {
+          console.warn('Firebase Auth sign-in failed:', e.message);
+          // Non-fatal — commissioner mode still works for GitHub saves
+        }
+      }
       document.getElementById('comm-password-input').value = '';
       closeModal('comm-login-overlay');
       sessionStorage.setItem('comm_unlocked', '1');
