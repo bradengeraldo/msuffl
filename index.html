@@ -4509,8 +4509,10 @@ window._MSU = {
           b.inSeasonFaab  = String(remaining + 25);
         }
 
-        // Push to Firebase immediately via REST (no SDK dependency)
+        // Push to Firebase immediately via REST (no SDK dependency).
+        // Full blob first so edits persist without a GitHub token (reader prefers it).
         const _tsR = Date.now();
+        window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
         window.fbSet && window.fbSet('league_data/rosters', LEAGUE_DATA.rosters);
         window.fbSet && window.fbSet('league_data/keepers2026', LEAGUE_DATA.keepers2026);
         window.fbSet && window.fbSet('league_data/budgets', LEAGUE_DATA.budgets);
@@ -4693,6 +4695,7 @@ window._MSU = {
 
     // Push to Firebase immediately via REST (no SDK dependency)
     const _tsT = Date.now();
+    window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
     window.fbSet && window.fbSet('league_data/trades', LEAGUE_DATA.trades);
     window.fbSet && window.fbSet('league_data/_version', _tsT);
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} trades`);
@@ -4744,10 +4747,16 @@ window._MSU = {
   }
 
   // Publish the draft live to all viewers via Firebase (no GitHub commit — that's on Save).
+  // Writes the full leagueData blob so picks persist with or without a GitHub token.
   function publishDraftLive() {
     if (!window.fbSet) return;
     window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
     window.fbSet('league_data/_version', Date.now());
+  }
+  let _draftPubTimer = null;
+  function publishDraftLiveDebounced() {
+    clearTimeout(_draftPubTimer);
+    _draftPubTimer = setTimeout(publishDraftLive, 700);
   }
 
   function injectDraftEditBar() {
@@ -4849,8 +4858,14 @@ window._MSU = {
         });
       });
     });
-    // Rookie picks: refresh the available-rookie list and publish live as each is made
+    // Rookie picks: refresh the available-rookie list and publish live as each is made.
+    // Publish on 'change' (commit/blur) AND debounced on 'input', so picks persist to the
+    // database even if the field is never blurred or the Save button isn't clicked.
     contentEl.querySelectorAll('.de-player').forEach(inp => {
+      inp.addEventListener('input', function() {
+        picks[parseInt(this.dataset.i)].player = this.value;
+        publishDraftLiveDebounced();
+      });
       inp.addEventListener('change', function() {
         picks[parseInt(this.dataset.i)].player = this.value;
         updateRookieDatalist(year);
@@ -4893,8 +4908,11 @@ window._MSU = {
     document.querySelectorAll('.de-player').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].player = el.value); });
     LEAGUE_DATA.drafts[yr] = picks.filter(p => p.player || p.team);
 
-    // Push to Firebase immediately via REST (no SDK dependency)
+    // Push to Firebase immediately via REST (no SDK dependency).
+    // Write the FULL leagueData blob (what the reader prefers) so picks persist even
+    // without a GitHub token — not just the partial league_data/drafts path.
     const _tsD = Date.now();
+    window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
     window.fbSet && window.fbSet('league_data/drafts', LEAGUE_DATA.drafts);
     window.fbSet && window.fbSet('league_data/_version', _tsD);
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} rookie draft`);
@@ -5790,6 +5808,7 @@ window._MSU = {
 
       // Commissioner's client pushes updated rosters/budgets to Firebase
       if (window.commMode && window.commMode.isUnlocked()) {
+        window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
         window.fbSet && window.fbSet('league_data/rosters',  LEAGUE_DATA.rosters);
         window.fbSet && window.fbSet('league_data/budgets',  LEAGUE_DATA.budgets);
         window.fbSet && window.fbSet('league_data/_version', Date.now());
@@ -6065,6 +6084,7 @@ window._MSU = {
       try {
         // Push updated rosters/budgets to Firebase for live viewers
         const _ts = Date.now();
+        window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
         window.fbSet && window.fbSet('league_data/rosters',  LEAGUE_DATA.rosters);
         window.fbSet && window.fbSet('league_data/budgets',  LEAGUE_DATA.budgets);
         window.fbSet && window.fbSet('league_data/_version', _ts);
@@ -6567,6 +6587,41 @@ window._MSU = {
     alert('✓ Full rosters restored.');
   }
 
+  // Wipe ALL live data from Firebase so the site falls back to the data baked into the
+  // deployed file. Deletes the whole league_data node (not just leagueData — a leftover
+  // _version would keep partial data alive) plus the auction board, then reloads.
+  async function resetDatabase() {
+    if (!confirm('⚠️ RESET LIVE DATABASE?\n\nThis erases ALL live data — keeper submissions, rookie draft picks, roster edits, and the auction board — and reloads the site using the data in the deployed file.\n\nThis cannot be undone. Continue?')) return;
+    if (!confirm('Are you absolutely sure? Every team\'s in-progress data in the live database will be permanently erased.')) return;
+    try {
+      if (window.fbSet) {
+        await window.fbSet('league_data', null);   // PUT null deletes the node
+        await window.fbSet('live_draft/picks', null);
+      }
+      alert('✓ Live database cleared. Reloading with the deployed data…');
+      location.reload();
+    } catch (e) {
+      alert('Reset failed: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // Commit the entire current dataset to GitHub (bakes it into the deployed index.html).
+  // Requires a GitHub token in this session. Pulls the latest live data first so the
+  // commit captures team submissions made on other devices, not just this tab's memory.
+  async function saveAllToGitHub() {
+    if (!window.commSave) { alert('Save engine not available.'); return; }
+    const hasToken = window.commMode && window.commMode.getToken && window.commMode.getToken();
+    if (!hasToken) {
+      alert('No GitHub token in this session.\n\nTo save permanently: click the 🔒 icon to log out, log back in with your password, and enter your GitHub token when prompted — then click "Save everything to GitHub" again.');
+      return;
+    }
+    if (!confirm('Save ALL current data to GitHub? This bakes the live state (rosters, keepers, rookie draft, trades) into the deployed site and rebuilds it in ~30s.')) return;
+    await fetchLatest(); // capture the freshest live state before committing
+    const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, 'Commissioner: full save (all data) to site');
+    if (ok) alert('✓ Saved to GitHub. The site rebuilds in ~30 seconds with this data baked in — it will now survive a database reset.');
+    // commSave shows its own error toast on failure
+  }
+
   // ── Totals / validation for the current checklist ──
   function recalc() {
     const rows = document.querySelectorAll('#kp-roster .kp-row');
@@ -6716,6 +6771,22 @@ window._MSU = {
           <span class="kp-intro" style="margin:0;color:var(--yellow)">Auction rosters are LIVE (non-keepers released).</span>` : ''}
         </div>
       </div>
+
+      <div class="kp-dash" style="margin-top:1.5rem">
+        <div class="section-title" style="font-size:1rem">💾 Save to site (permanent)</div>
+        <div class="kp-submitbar" style="margin-top:.5rem">
+          <button class="kp-btn" id="kp-save-github" style="background:var(--blue);color:#04210f">💾 Save everything to GitHub</button>
+          <span class="kp-intro" style="margin:0">Bakes all current data into the deployed site (needs your GitHub token). Use this when the draft is final — it survives a database reset.</span>
+        </div>
+      </div>
+
+      <div class="kp-dash" style="margin-top:1.5rem;border:1px solid var(--red);border-radius:12px;padding:1rem 1.1rem">
+        <div class="section-title" style="font-size:1rem;color:var(--red)">⚠️ Danger zone</div>
+        <div class="kp-submitbar" style="margin-top:.5rem">
+          <button class="kp-btn" id="kp-reset-db" style="background:var(--red);color:#fff">🗑️ Reset live database</button>
+          <span class="kp-intro" style="margin:0">Wipes <strong>all</strong> live data (keeper submissions, rookie picks, roster edits, auction board) and reloads using the data in the deployed file. Use this to clear test data. Cannot be undone.</span>
+        </div>
+      </div>
     </div>`;
   }
 
@@ -6803,6 +6874,10 @@ window._MSU = {
       if (rel) rel.addEventListener('click', () => releaseNonKeepers());
       const rst = root.querySelector('#kp-restore');
       if (rst) rst.addEventListener('click', () => restoreFullRosters());
+      const rdb = root.querySelector('#kp-reset-db');
+      if (rdb) rdb.addEventListener('click', () => resetDatabase());
+      const sgh = root.querySelector('#kp-save-github');
+      if (sgh) sgh.addEventListener('click', () => saveAllToGitHub());
     }
   }
 
