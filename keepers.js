@@ -393,8 +393,15 @@
     }).join('');
     const submitted = teams.filter(t => LEAGUE_DATA.keeperLocks && LEAGUE_DATA.keeperLocks[t]).length;
     const released = !!LEAGUE_DATA.rostersFull;
+    // Live-write health check: comm tools are useless if Firebase Auth isn't signed in
+    let fbUser = null;
+    try { fbUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null; } catch(e) {}
+    const fbStatus = fbUser
+      ? `<span style="color:var(--green)">✓ Live database: signed in as ${esc(fbUser.email)}</span>`
+      : `<span style="color:var(--red)">⚠ Live database: NOT signed in — every live write (rosters, draft picks, keeper tools) will be rejected and lost on reload. Fix: Firebase console → Authentication → add/repair user commissioner@msuffl.com with your commissioner password, then log out and back in here.</span>`;
     return `<div class="kp-dash">
       <div class="section-title" style="font-size:1.1rem">⚡ Commissioner — Keeper Submissions (${submitted}/${teams.length})</div>
+      <div class="kp-intro" style="margin:.4rem 0">${fbStatus}</div>
       <div class="kp-submitbar" style="margin-top:.75rem">
         <button class="kp-btn ${windowLocked?'ghost':''}" id="kp-window-toggle">${windowLocked ? '🔓 Reopen submission window' : '🔒 Lock all keepers (close window)'}</button>
         <span class="kp-intro" style="margin:0">${windowLocked ? 'Window is CLOSED — teams cannot submit.' : 'Window is OPEN — teams can submit.'}</span>

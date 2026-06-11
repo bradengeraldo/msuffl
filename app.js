@@ -2875,6 +2875,13 @@ window._MSU = {
       });
       if (r.status === 401 || r.status === 403) {
         console.warn(`Firebase write DENIED (${r.status}): ${path} — commissioner is not signed in to Firebase Auth. Log out and back in.`);
+        if (window.commSave && window.commSave.showToast) {
+          window.commSave.showToast('⚠ LIVE WRITE DENIED — this change will NOT survive a reload', 'error');
+        }
+        if (!window.__fbDenyAlerted) {
+          window.__fbDenyAlerted = true;
+          alert('⚠️ The live database REJECTED a commissioner write.\n\nYour edits show on screen but will NOT survive a reload.\n\nCause: you are not signed in to Firebase' + (tok ? ' with a valid account' : '') + '.\n\nFix:\n1. Firebase console → Authentication → Sign-in method: enable Email/Password.\n2. Authentication → Users: add commissioner@msuffl.com with your commissioner password (or reset its password to match).\n3. On the site: click the 🔓 lock to log out, then log back in.');
+        }
       } else if (!r.ok) console.warn(`Firebase write failed (${r.status}):`, path);
       else console.log(`Firebase write OK:`, path);
     } catch(e) { console.warn('Firebase REST write failed:', e); }
