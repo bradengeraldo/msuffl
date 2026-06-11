@@ -53,18 +53,19 @@
 
   // MANAGER: write only this team's submission to the public-writable per-team node.
   // The database rules make this create-only (an existing submission can't be tampered
-  // with) and keep the main league blob locked to the commissioner. Returns true on success.
+  // with) and keep the main league blob locked to the commissioner.
+  // Returns { ok, reason } — see fbPublicSet.
   async function pushKeeperSubmission(team) {
-    if (!window.fbPublicSet) return false;
-    const ok = await window.fbPublicSet(`keeper_submissions/${window.fbTeamKey(team)}`, {
+    if (!window.fbPublicSet) return { ok: false, reason: 'not-configured' };
+    const res = await window.fbPublicSet(`keeper_submissions/${window.fbTeamKey(team)}`, {
       team: team,
       picks: LEAGUE_DATA.keepers2026[team] || [],
       budget: (LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team]) || null,
       locked: true,
       ts: Date.now()
     });
-    if (ok) await window.fbPublicSet('league_data/_version', Date.now());
-    return ok;
+    if (res.ok) await window.fbPublicSet('league_data/_version', Date.now());
+    return res;
   }
 
   // ── Draft-day bridges (commissioner) ──────────────────────────────────────
@@ -300,11 +301,17 @@
     b.remaining = String(MAX_VALUE - value); b.inSeasonFaab = String(MAX_VALUE - value + 25);
 
     // Managers write only their own team's submission node — never the league blob.
-    const ok = await pushKeeperSubmission(team);
-    if (!ok) {
+    const res = await pushKeeperSubmission(team);
+    if (!res.ok) {
       delete LEAGUE_DATA.keeperLocks[team];
+      const messages = {
+        'denied': 'The league database rejected this submission. If your team already submitted once, ask the commissioner to reopen your team. Otherwise the database rules may not match the site version.',
+        'file-protocol': 'You are viewing the site as a local file (file://) — live submissions only work on the deployed site (msuffl.com) or a local web server.',
+        'not-configured': 'The league database is not configured on this copy of the site.',
+        'network': 'Could not reach the league database — check your connection and try again.'
+      };
       const err = document.getElementById('kp-form-err');
-      if (err) { err.textContent = 'Could not reach the league database — check your connection and try again.'; err.style.display = 'block'; }
+      if (err) { err.textContent = messages[res.reason] || messages['network']; err.style.display = 'block'; }
       btn.disabled = false; btn.textContent = '🔒 Submit & Lock Keepers';
       return;
     }

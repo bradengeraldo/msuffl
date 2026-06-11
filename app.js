@@ -2068,8 +2068,10 @@ window._MSU = {
       let msg = err.message;
       if (msg.includes('401') || msg.includes('Bad credentials')) {
         msg = 'GitHub token invalid — log out and log back in with a fresh token';
+      } else if (msg.includes('403') || msg.includes('not accessible')) {
+        msg = 'GitHub token lacks write access — fine-grained token needs the msuffl repo selected with Contents: Read & write';
       } else if (msg.includes('404')) {
-        msg = 'Repo not found — check GitHub token has repo access';
+        msg = 'File not found in repo — make sure leagueData.js has been uploaded to GitHub';
       } else if (msg.includes('422')) {
         msg = 'Commit conflict — reload the page and try again';
       }
@@ -2859,6 +2861,10 @@ window._MSU = {
   // the commissioner's ID token. Writes fail loudly (toast in console) if not signed in.
   window.fbSet = async function fbSet(path, data) {
     if (!FB_CONFIGURED || !FB_DB_URL) return;
+    if (location.protocol === 'file:') {
+      console.warn('Firebase writes do not work from file:// — use the deployed site or a local web server.');
+      return;
+    }
     try {
       const tok = await window.fbAuthToken();
       const q = tok ? `?auth=${encodeURIComponent(tok)}` : '';
@@ -2876,8 +2882,14 @@ window._MSU = {
 
   // PUBLIC (unauthenticated) write — only for paths the database rules deliberately
   // leave open: keeper_submissions/<team> (create-only) and league_data/_version.
+  // Returns { ok, reason }: reason is 'denied' (rules rejected it), 'network',
+  // 'file-protocol' (opened as a local file), or 'not-configured'.
   window.fbPublicSet = async function fbPublicSet(path, data) {
-    if (!FB_CONFIGURED || !FB_DB_URL) return false;
+    if (!FB_CONFIGURED || !FB_DB_URL) return { ok: false, reason: 'not-configured' };
+    if (location.protocol === 'file:') {
+      console.warn('Firebase writes do not work from file:// — use the deployed site or a local web server.');
+      return { ok: false, reason: 'file-protocol' };
+    }
     try {
       const r = await fetch(`${FB_DB_URL}/${path}.json`, {
         method: 'PUT',
@@ -2885,8 +2897,8 @@ window._MSU = {
         body: JSON.stringify(data)
       });
       if (!r.ok) console.warn(`Firebase public write failed (${r.status}):`, path);
-      return r.ok;
-    } catch(e) { console.warn('Firebase public write failed:', e); return false; }
+      return { ok: r.ok, reason: r.ok ? '' : ((r.status === 401 || r.status === 403) ? 'denied' : 'network') };
+    } catch(e) { console.warn('Firebase public write failed:', e); return { ok: false, reason: 'network' }; }
   }
 
   // Snapshot the full league blob to backups/<timestamp> (authed) and prune to the
