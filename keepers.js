@@ -322,13 +322,17 @@
   // ── Render the team's checklist ──
   function renderForm(team) {
     const roster = rosterMenu(team);
-    const existing = new Set(((LEAGUE_DATA.keepers2026 && LEAGUE_DATA.keepers2026[team]) || []).map(k => k.player));
+    const prior = (LEAGUE_DATA.keepers2026 && LEAGUE_DATA.keepers2026[team]) || [];
+    const existing = new Set(prior.map(k => k.player));
+    // No prior submission → start with EVERY player checked; managers uncheck who they release.
+    // (A reopened team still sees their previous picks.)
+    const checkAll = prior.length === 0;
     // Restricted FAs (TBD value) are NOT keepers — they go to the auction as RFAs (you hold rights).
     const selectable = roster.filter(p => String(p.val2026) !== 'TBD');
     const rfas       = roster.filter(p => String(p.val2026) === 'TBD');
     const rowsHtml = selectable.map((p, i) => {
       const val = parseInt(p.val2026) || 0;
-      const checked = existing.has(p.player) ? 'checked' : '';
+      const checked = (checkAll || existing.has(p.player)) ? 'checked' : '';
       return `<label class="kp-row ${checked?'kept':''}" data-i="${i}" data-tbd="0" data-val="${val}" data-player="${esc(p.player)}">
         <input type="checkbox" ${checked}>
         <span class="kp-pos ${posClass(p.pos)}">${esc(p.pos)}</span>
