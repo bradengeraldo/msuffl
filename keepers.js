@@ -324,9 +324,9 @@
     const roster = rosterMenu(team);
     const prior = (LEAGUE_DATA.keepers2026 && LEAGUE_DATA.keepers2026[team]) || [];
     const existing = new Set(prior.map(k => k.player));
-    // No prior submission → start with EVERY player checked; managers uncheck who they release.
-    // (A reopened team still sees their previous picks.)
-    const checkAll = prior.length === 0;
+    // ALWAYS start with EVERY player checked; managers uncheck who they release.
+    // (Applies to reopened teams too — they start fresh from a full roster.)
+    const checkAll = true;
     // Restricted FAs (TBD value) are NOT keepers — they go to the auction as RFAs (you hold rights).
     const selectable = roster.filter(p => String(p.val2026) !== 'TBD');
     const rfas       = roster.filter(p => String(p.val2026) === 'TBD');
