@@ -514,13 +514,50 @@ function buildDraft() {
   const contentEl = document.getElementById('draft-content');
   const years = Object.keys(LEAGUE_DATA.drafts).sort((a,b) => b-a);
 
-  tabsEl.innerHTML = years.map((yr, i) =>
-    `<button class="year-tab ${i === 0 ? 'active' : ''}" data-year="${yr}">${yr}</button>`
+  // ── Live rookie draft mode (commissioner starts/ends it from the edit bar) ──
+  const _rdLive = LEAGUE_DATA.liveRookieDraft;
+  const liveYear = (_rdLive && _rdLive.active && LEAGUE_DATA.drafts[_rdLive.year]) ? String(_rdLive.year) : null;
+  const _rdIsPlaceholder = p => !p || /^\s*round\s*\d+\s*,\s*pick\s*\d+\s*(\(\s*\d+\s*\))?\s*$/i.test(String(p).trim());
+  if (!document.getElementById('rd-live-style')) {
+    const st = document.createElement('style');
+    st.id = 'rd-live-style';
+    st.textContent = `
+.rd-live-banner{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;background:rgba(139,0,0,.18);border:1px solid #c0392b;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.95rem}
+.rd-live-dot{width:10px;height:10px;border-radius:50%;background:#e74c3c;animation:rdpulse 1.2s infinite;flex:0 0 auto}
+@keyframes rdpulse{0%,100%{opacity:1}50%{opacity:.25}}
+.rd-live-onclock{font-weight:700}
+.rd-last-pick{opacity:.75;font-size:.85rem}
+.draft-pick.rd-onclock{outline:2px solid #e74c3c;border-radius:8px;animation:rdpulsebg 2s infinite}
+@keyframes rdpulsebg{0%,100%{background:rgba(231,76,60,.10)}50%{background:rgba(231,76,60,.22)}}
+.draft-pick.rd-onclock .pick-player.empty{color:#e74c3c;font-weight:700}`;
+    document.head.appendChild(st);
+  }
+
+  tabsEl.innerHTML = years.map((yr) =>
+    `<button class="year-tab ${(liveYear ? yr === liveYear : yr === years[0]) ? 'active' : ''}" data-year="${yr}">${yr}${yr === liveYear ? ' 🔴' : ''}</button>`
   ).join('');
 
   function renderDraft(year) {
     const picks = LEAGUE_DATA.drafts[year] || [];
-    let html = '<div class="draft-grid">';
+    const isLive = liveYear && String(year) === liveYear;
+    const onClockIdx = isLive ? picks.findIndex(p => _rdIsPlaceholder(p.player)) : -1;
+    let html = '';
+
+    if (isLive) {
+      const made = picks.map((p, i) => ({ p, i })).filter(x => !_rdIsPlaceholder(x.p.player));
+      const last = made.length ? made[made.length - 1] : null;
+      const onClock = onClockIdx >= 0 ? picks[onClockIdx] : null;
+      html += `<div class="rd-live-banner">
+        <span class="rd-live-dot"></span>
+        <span><strong>LIVE</strong> — ${escHtml(year)} Rookie Draft in progress</span>
+        ${onClock
+          ? `<span class="rd-live-onclock">⏰ On the clock: ${escHtml(onClock.team || 'TBD')} (${escHtml(onClock.round)}, ${escHtml(onClock.pick)})</span>`
+          : `<span class="rd-live-onclock">✅ All picks are in!</span>`}
+        ${last ? `<span class="rd-last-pick">Last pick: #${last.i + 1} ${escHtml(last.p.player)} — ${escHtml(last.p.team)}</span>` : ''}
+      </div>`;
+    }
+
+    html += '<div class="draft-grid">';
     let lastRound = '';
     picks.forEach((pick, idx) => {
       const pickNum = pick.pick.replace('Pick ', '').replace('Pick', '').trim();
@@ -530,13 +567,14 @@ function buildDraft() {
         lastRound = roundLabel;
       }
       const hasPlayer = pick.player && pick.player !== '' && !pick.player.startsWith('Round');
-      html += `<div class="draft-pick">
+      const onClockCls = idx === onClockIdx ? ' rd-onclock' : '';
+      html += `<div class="draft-pick${onClockCls}">
         <div>
           <div class="pick-number">${escHtml(pickNum)}</div>
           <div class="pick-round-tag">#${idx + 1}</div>
         </div>
         <div class="pick-info">
-          <div class="pick-player ${hasPlayer ? '' : 'empty'}">${hasPlayer ? escHtml(pick.player) : 'TBD'}</div>
+          <div class="pick-player ${hasPlayer ? '' : 'empty'}">${hasPlayer ? escHtml(pick.player) : (idx === onClockIdx ? 'ON THE CLOCK' : 'TBD')}</div>
           <div class="pick-team">${escHtml(pick.team)}</div>
           ${pick.via ? `<div class="pick-via">via ${escHtml(pick.via)}</div>` : ''}
         </div>
@@ -554,7 +592,7 @@ function buildDraft() {
     });
   });
 
-  if (years.length) renderDraft(years[0]);
+  if (years.length) renderDraft(liveYear || years[0]);
 }
 
 // ===================== TRADES PAGE =====================
@@ -2569,6 +2607,7 @@ window._MSU = {
       </select>
       <button class="comm-btn-add" id="de-add">＋ Add Pick</button>
       <button class="comm-btn-save" id="de-save">💾 Save</button>
+      <button class="comm-btn-add" id="de-live" style="background:#8b0000">🔴 Start Live Draft</button>
     `;
     const title = page.querySelector('.section-title');
     title ? title.after(bar) : page.insertBefore(bar, page.firstChild);
@@ -2600,6 +2639,32 @@ window._MSU = {
       renderDraftEdit(yr);
     });
     document.getElementById('de-save').addEventListener('click', saveDraft);
+
+    // ── Live rookie draft toggle ──────────────────────────────────────────────
+    // Broadcasts a flag in the live blob; every viewer's Rookie Draft page switches
+    // to the live board (on-the-clock + latest pick) and updates in real time as
+    // the commissioner types picks. No GitHub commit — live-only state.
+    const liveBtn = document.getElementById('de-live');
+    function syncLiveBtn() {
+      const on = LEAGUE_DATA.liveRookieDraft && LEAGUE_DATA.liveRookieDraft.active;
+      liveBtn.textContent = on ? '⏹ End Live Draft' : '🔴 Start Live Draft';
+      liveBtn.style.background = on ? '#555' : '#8b0000';
+    }
+    liveBtn.addEventListener('click', () => {
+      const on = LEAGUE_DATA.liveRookieDraft && LEAGUE_DATA.liveRookieDraft.active;
+      if (!on) {
+        const yr = document.getElementById('de-year').value;
+        if (yr === '__new__' || !LEAGUE_DATA.drafts[yr]) { alert('Select a draft year first.'); return; }
+        if (!confirm(`Start the LIVE ${yr} rookie draft?\n\nEveryone viewing the Rookie Draft page will see the live board: the team on the clock, the latest pick, and every pick as you enter it.`)) return;
+        LEAGUE_DATA.liveRookieDraft = { active: true, year: yr, ts: Date.now() };
+      } else {
+        if (!confirm('End the live rookie draft?\n\nViewers will see the normal Rookie Draft page again. (This does not delete any picks.)')) return;
+        LEAGUE_DATA.liveRookieDraft = { active: false };
+      }
+      publishDraftLive();
+      syncLiveBtn();
+    });
+    syncLiveBtn();
 
     renderDraftEdit(years[0]);
   }

@@ -1,19 +1,6 @@
 (function() {
-  // ── Per-team PIN hashes (SHA-256). PINs distributed privately to each manager. ──
-  const TEAM_PIN_HASHES = {
-  "The Mixon Administration": "8a722f6cba6727dd73a08611b03a9a47e9894a94f5852592cc3dea1e51cb1db9",
-  "The Benchwarmers": "bed814f027a26675181a41d666c1742178d5cd066905c685aaf919fb273398ed",
-  "Windy City Waterboys": "66e5bd3165e62d49eb12382bf03057f852ac52ef854d5922d1b98ac8ae8af3a1",
-  "Lets Cook": "2699b6d8684cd0e2dbb2a8f5302723bfdd61ccefbfe0e7ad422b82c90c9afced",
-  "Show Me Your TDs": "d17cf2ce13a313bc5be429edc3902d6dc43578a07b498ef814172bb18c87d9a2",
-  "Drunkin Pollacks": "eb9b92388c66726e0102b90f7c06f197e58e6b4e1d51122792d52186d5fc51f7",
-  "The Nixon Administration": "f534be7d26ceaa0665e27c89d9f14d0f7be7e9ef36eddac5a6e0bcf936b882eb",
-  "I've Fallen and I Can't Get Up": "cda7fd35486cb10dc02cb22ca915ca123ac4bce13828a3a7061ed8002a03bff8",
-  "Benches Don't Score Points I Do": "bcee80bb2f3a52ecee3070dd9c16299c4d40957d9048cd7520d00231da1a3cd5",
-  "There's a YOU Sheriff in Town": "e3fe8244b7408ab65631a0dd420dc72921d93717de439326519d176c6a2fa420",
-  "Quarter Chubb": "e1a03a84a98af8b50b84edce66c4c7ba2d05478c2cd54418335641d378024762",
-  "Half Chubb": "8fbba95ec4b04aa149695d13fdb38e27fe1878b643ee83a3ab604723d3d96a94"
-  };
+  // No team PINs — managers pick their team from the dropdown and submit.
+  // (Submissions still lock on submit; only the commissioner can reopen a team.)
 
   const MAX_PLAYERS = 16;          // max non-TBD keepers
   const MAX_VALUE   = 200;         // max total keeper value ($)
@@ -21,10 +8,6 @@
 
   let unlockedTeam = null;         // team whose form is currently unlocked
 
-  async function sha256(msg) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function posClass(pos){ return String(pos||'').replace(/[^A-Za-z]/g,'').toUpperCase(); }
 
@@ -449,7 +432,7 @@
     const isComm = !!(window.commMode && window.commMode.isUnlocked());
     const windowLocked = !!LEAGUE_DATA.keeperWindowLocked;
 
-    let html = `<div class="kp-intro">Each team keeps any combination of up to <strong>${MAX_PLAYERS} players</strong> worth up to <strong>$${MAX_VALUE}</strong> in total keeper value. Rookie-deal / restricted-FA players marked <strong>TBD</strong> are free — they don't count toward your player count or your budget. Pick your team, enter your PIN, and submit before the draft.</div>`;
+    let html = `<div class="kp-intro">Each team keeps any combination of up to <strong>${MAX_PLAYERS} players</strong> worth up to <strong>$${MAX_VALUE}</strong> in total keeper value. Rookie-deal / restricted-FA players marked <strong>TBD</strong> are free — they don't count toward your player count or your budget. Pick your team and submit before the draft.</div>`;
     html += `<div class="kp-banner ${windowLocked?'closed':''}">${windowLocked ? '🔒 Keeper submissions are closed for the season.' : '🟢 Keeper submissions are open. Submit before the draft — once you submit, your picks lock.'}</div>`;
 
     if (!unlockedTeam) {
@@ -458,9 +441,7 @@
         <div class="kp-gate-row">
           <div class="kp-field"><label>Your team</label>
             <select class="kp-select" id="kp-team"><option value="">— Select your team —</option>${opts}</select></div>
-          <div class="kp-field"><label>Team PIN</label>
-            <input class="kp-pin" id="kp-pin-input" maxlength="10" placeholder="••••••" autocomplete="off"></div>
-          <button class="kp-btn" id="kp-unlock">Unlock</button>
+          <button class="kp-btn" id="kp-unlock">Continue</button>
         </div>
         <div class="kp-err" id="kp-gate-err"></div>
       </div>`;
@@ -483,16 +464,14 @@
     if (unlockBtn) {
       const tryUnlock = async () => {
         const team = root.querySelector('#kp-team').value;
-        const pin  = (root.querySelector('#kp-pin-input').value || '').trim().toUpperCase();
         const err  = root.querySelector('#kp-gate-err');
         if (!team) { err.textContent = 'Select your team first.'; return; }
-        if (!pin)  { err.textContent = 'Enter your team PIN.'; return; }
-        const h = await sha256(pin);
-        if (h === TEAM_PIN_HASHES[team]) { err.textContent = ''; unlockedTeam = team; await fetchLatest(); renderPortal(); }
-        else { err.textContent = 'Incorrect PIN for that team.'; }
+        err.textContent = '';
+        unlockedTeam = team;
+        await fetchLatest();
+        renderPortal();
       };
       unlockBtn.addEventListener('click', tryUnlock);
-      root.querySelector('#kp-pin-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
     }
     const roster = root.querySelector('#kp-roster');
     if (roster && root.querySelector('#kp-submit')) { roster.addEventListener('change', recalc); recalc(); }
