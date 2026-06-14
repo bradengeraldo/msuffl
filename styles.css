@@ -896,6 +896,19 @@
   }
 
   /* KEEPERS */
+  .keepers-status-banner {
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .keepers-status-banner.hidden-state { border-color: rgba(255,216,77,0.4); background: rgba(255,216,77,0.08); }
+  .keepers-status-banner.revealed { border-color: var(--green); background: var(--green-glow); }
+  .keeper-lock-chip { font-size: 0.85rem; opacity: 0.9; }
+  .keeper-lock-chip.pending { color: var(--yellow); }
   .keepers-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1715,6 +1728,38 @@
   .ld-top-pteam  { color:var(--text-muted); font-size:10px; flex-shrink:0; }
   .ld-rfa-badge  { display:inline-block; font-size:9px; font-weight:700; letter-spacing:.04em; color:var(--yellow); background:rgba(255,216,77,.15); border:1px solid rgba(255,216,77,.4); border-radius:4px; padding:0 4px; margin-left:5px; vertical-align:middle; }
   .ld-top-pteam.rfa { color:var(--yellow); }
+
+  /* Live banner (auction) */
+  @keyframes rdpulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+  .ld-live-banner { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; background:rgba(139,0,0,.18) !important; border:1px solid #c0392b; }
+  .ld-live-dot { width:10px; height:10px; border-radius:50%; background:#e74c3c; animation:rdpulse 1.2s infinite; flex:0 0 auto; }
+  .ld-live-count { font-size:12px; color:var(--text-muted); }
+  .ld-last-pick { font-size:12px; color:var(--text-muted); margin-left:auto; }
+
+  /* Nomination order strip */
+  .ld-nom-strip { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:12px; }
+  .ld-nom-hdr { font-size:12px; margin-bottom:6px; }
+  .ld-nom-mgr { color:var(--text-muted); font-weight:400; }
+  .ld-nom-list { display:flex; flex-wrap:wrap; gap:5px; }
+  .ld-nom-chip { font-size:11px; padding:2px 7px; border-radius:12px; background:var(--surface3); border:1px solid var(--border); color:var(--text-muted); white-space:nowrap; }
+  .ld-nom-chip.current { background:var(--green-glow); border-color:var(--green); color:var(--green); font-weight:700; }
+  .ld-nom-chip.out { opacity:0.4; text-decoration:line-through; }
+
+  /* Clickable team cards → roster page */
+  .ld-team-card.clickable { cursor:pointer; }
+  .ld-team-card.clickable:hover { border-color:var(--border-bright); background:var(--surface3); }
+
+  /* Mobile: stack picks → team summary → remaining players */
+  @media (max-width: 760px) {
+    .ld-layout { flex-direction:column; gap:16px; }
+    .ld-center { order:-1; }
+    .ld-team-panel { width:100%; position:static; flex-direction:row; flex-wrap:wrap; gap:6px; }
+    #ld-panel-right .ld-tc-panel-label { display:none; }
+    .ld-team-panel .ld-tc-panel-label { width:100%; }
+    .ld-team-card { flex:1 1 calc(50% - 6px); min-width:140px; }
+    .ld-pick-card { width:calc(50% - 4px); }
+    .ld-last-pick { margin-left:0; width:100%; }
+  }
 
   /* Phase 5 – Polish */
   .comm-save-overlay {

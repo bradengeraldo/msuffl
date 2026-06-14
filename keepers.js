@@ -499,6 +499,8 @@
         if (window.commSave) await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: ${closing ? 'close' : 'reopen'} keeper window`);
         pushToFirebase();
         renderPortal();
+        // Reveal/hide keepers on the 2026 Keepers tab to match the new window state.
+        if (typeof buildKeepers === 'function') { try { buildKeepers(); } catch(e){} }
       });
       const pr = root.querySelector('#kp-promote-rookies');
       if (pr) pr.addEventListener('click', () => promoteRookies());

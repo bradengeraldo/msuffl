@@ -20,6 +20,11 @@ function showPage(pageId) {
 
 navBtns.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
 
+// Re-render the 2026 Keepers tab on navigation so its reveal/hidden state and any
+// freshly-synced submissions are always current when a viewer opens it.
+document.querySelector('.nav-btn[data-page="keepers"]')
+  ?.addEventListener('click', () => { try { buildKeepers(); } catch(e){} });
+
 // ── Hash-based page persistence ──────────────────────────────────────────────
 (function() {
   const _origSP = showPage;
@@ -482,14 +487,62 @@ document.getElementById('roster-search').addEventListener('input', function() {
 // ===================== KEEPERS PAGE =====================
 function buildKeepers() {
   const grid = document.getElementById('keepers-grid');
-  const teams = Object.keys(LEAGUE_DATA.keepers2026).sort();
+  if (!grid) return;
 
+  const locks        = LEAGUE_DATA.keeperLocks || {};
+  const windowLocked = !!LEAGUE_DATA.keeperWindowLocked;
+  const isComm       = !!(window.commMode && window.commMode.isUnlocked());
+  // Keepers stay hidden from everyone until the commissioner closes the window
+  // ("Lock all keepers"). The commissioner can always see them.
+  const reveal       = windowLocked || isComm;
+
+  // All teams, in a stable order, so every team shows even before submitting.
+  const teams = (LEAGUE_DATA.teams && LEAGUE_DATA.teams.length
+    ? LEAGUE_DATA.teams.slice()
+    : Object.keys(LEAGUE_DATA.keepers2026 || {})).sort();
+
+  // ── Status banner above the grid ─────────────────────────────────────────
+  let banner = document.getElementById('keepers-status-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'keepers-status-banner';
+    banner.className = 'keepers-status-banner';
+    grid.parentNode.insertBefore(banner, grid);
+  }
+  const submitted = teams.filter(t => locks[t]).length;
+  if (reveal) {
+    banner.className = 'keepers-status-banner revealed';
+    banner.innerHTML = windowLocked
+      ? `🔒 <strong>Keepers are locked.</strong> Final keepers for all ${teams.length} teams are shown below — review before the draft.`
+      : `👁️ <strong>Commissioner preview.</strong> Keepers are still hidden from managers until you click “Lock all keepers (close window)”. ${submitted}/${teams.length} teams have submitted.`;
+  } else {
+    banner.className = 'keepers-status-banner hidden-state';
+    banner.innerHTML = `🙈 <strong>Keepers are hidden until the submission window closes.</strong> ${submitted}/${teams.length} teams have submitted. Everyone’s keepers will appear here once the commissioner locks them.`;
+  }
+
+  // ── Hidden state: show only submission status, not the picks ──────────────
+  if (!reveal) {
+    grid.innerHTML = teams.map(team => {
+      const done = !!locks[team];
+      return `<div class="keeper-team-card">
+        <div class="keeper-team-header">
+          <h3>${escHtml(team)}</h3>
+          <span class="keeper-budget-badge ${done ? '' : 'over'}">${done ? '✓ Submitted' : '⧗ Pending'}</span>
+        </div>
+        <div class="keeper-player-list"><div class="empty-state">${done ? 'Locked in — hidden until reveal' : 'Not submitted yet'}</div></div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // ── Revealed state: full keepers for every team ──────────────────────────
   grid.innerHTML = teams.map(team => {
     const keepers = LEAGUE_DATA.keepers2026[team] || [];
-    const budget = LEAGUE_DATA.budgets[team];
+    const budget = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
     const rem = budget ? parseInt(budget.remaining) : 0;
     const isOver = rem < 0;
     const total = budget ? budget.totalKept : '—';
+    const done = !!locks[team];
 
     const playerItems = keepers.map(k =>
       `<div class="keeper-player-item">
@@ -500,7 +553,7 @@ function buildKeepers() {
 
     return `<div class="keeper-team-card">
       <div class="keeper-team-header">
-        <h3>${escHtml(team)}</h3>
+        <h3>${escHtml(team)} ${done ? '<span class="keeper-lock-chip">🔒</span>' : '<span class="keeper-lock-chip pending" title="Did not submit — showing projected keepers">⧗</span>'}</h3>
         <span class="keeper-budget-badge ${isOver ? 'over' : ''}">$${total} / $200</span>
       </div>
       <div class="keeper-player-list">${playerItems || '<div class="empty-state">No keepers</div>'}</div>
@@ -3089,6 +3142,7 @@ window._MSU = {
               Once configured, this board shows all picks in real time for every manager.
             </div>` : `
             <div id="ld-status-bar" class="ld-status-bar"></div>
+            <div id="ld-nom-strip" class="ld-nom-strip" style="display:none"></div>
             <div id="ld-comm-controls" class="ld-comm-controls" style="display:none">
               <div class="comm-page-editbar" style="margin-bottom:12px">
                 <span class="comm-page-editlabel">⚡ Draft Controls</span>
@@ -3167,6 +3221,21 @@ window._MSU = {
     }
     subscribeToPicksFeed();
     fetchPlayerPool();
+
+    // ── Realtime league_data push (rookie draft, rosters, keepers, trades) ────
+    // The auction board gets instant updates via the SDK listener on
+    // live_draft/picks. Everything else (notably the rookie draft) flows through
+    // league_data/_version. Listen to it with the same SDK connection so every
+    // viewer's page refreshes instantly — not just within the 10s poll window.
+    if (!window._ldVersionListener) {
+      try {
+        window._fbDb.ref('league_data/_version').on('value', () => {
+          if (window.__applyLatestData) window.__applyLatestData();
+        });
+        window._ldVersionListener = true;
+      } catch(e) { /* fall back to REST polling in initDataSync */ }
+    }
+
     if (window.commMode && window.commMode.isUnlocked()) {
       const ctrl = document.getElementById('ld-comm-controls');
       if (ctrl) ctrl.style.display = '';
@@ -3186,6 +3255,8 @@ window._MSU = {
       if (page === 'rosters'   && typeof buildRosters === 'function') buildRosters();
       if (page === 'trades'    && typeof buildTrades  === 'function') buildTrades();
       if (page === 'draft'     && typeof buildDraft   === 'function') buildDraft();
+      if (page === 'keepers'   && typeof buildKeepers === 'function') buildKeepers();
+      if (page === 'submitkeepers' && typeof window.kpRender === 'function') window.kpRender();
     }
 
     async function applyLatestData() {
@@ -3241,6 +3312,13 @@ window._MSU = {
     // ── Polling fallback: catches up if SSE misses anything ──────────────────
     applyLatestData();
     setInterval(applyLatestData, 10000); // every 10s as safety net
+
+    // Expose so the Firebase SDK realtime listener (set up once the SDK loads in
+    // initLiveDraft) can push instant updates for ALL league_data changes —
+    // rookie draft, rosters, keepers, trades — the same way the auction board
+    // gets instant picks. This makes the rookie draft live-update across every
+    // browser, not just the commissioner's tab.
+    window.__applyLatestData = applyLatestData;
   }
 
   /* ── Subscribe to real-time picks feed ───────────────────────────────────── */
@@ -3759,6 +3837,63 @@ window._MSU = {
       '</div>';
   }
 
+  // Look up a player's position from the draft pool (used to auto-detect position).
+  function posForPlayer(name) {
+    const n = normalizeName(name);
+    const hit = _ldPlayerPool.find(p => normalizeName(p.name) === n);
+    if (!hit) return '';
+    const pos = String(hit.pos || '').replace(/\d+$/, '').toUpperCase();
+    if (pos === 'DST' || pos === 'DEF' || pos === 'D/ST') return 'D/ST';
+    return pos;
+  }
+
+  // ── Auction nomination order ──────────────────────────────────────────────
+  // Fixed manager order, wrapping 1→12→1. Teams that are full (16 players) or out
+  // of money ($200 spent) are skipped. The pointer advances one slot per completed
+  // pick — nomination is independent of who actually won the player.
+  const NOMINATION_ORDER = ['JAMES','COLLIN','ADAM/MATT','BLAKE','MIKE','CASEY','BRAD','JEFF','KYLE','CAMPBELL','BRADEN','BOBBY'];
+
+  function nominationTeams() {
+    const mgrs = LEAGUE_DATA.managers || {};
+    return NOMINATION_ORDER
+      .map(key => ({ key, team: mgrs[key] }))
+      .filter(x => x.team);
+  }
+
+  function teamIsEligible(team) {
+    const b = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
+    const roster = (LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[team]) || [];
+    const kept    = b ? parseInt(b.totalKept)   || 0 : 0;
+    const players = b ? parseInt(b.playerCount) || roster.filter(r => r.val2026 !== 'TBD').length : roster.filter(r => r.val2026 !== 'TBD').length;
+    return players < 16 && kept < 200;
+  }
+
+  function renderNominationStrip() {
+    const el = document.getElementById('ld-nom-strip');
+    if (!el) return;
+    const order = nominationTeams();
+    if (!order.length) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    const base = _allPicks.length % order.length;
+    let currentIdx = -1;
+    for (let s = 0; s < order.length; s++) {
+      const i = (base + s) % order.length;
+      if (teamIsEligible(order[i].team)) { currentIdx = i; break; }
+    }
+    const cur = currentIdx >= 0 ? order[currentIdx] : null;
+    el.innerHTML =
+      `<div class="ld-nom-hdr">🗣️ Nomination order ${cur
+        ? `— up now: <strong>#${currentIdx + 1} ${escHtml(cur.team)}</strong> <span class="ld-nom-mgr">(${escHtml(cur.key)})</span>`
+        : '— all teams are full'}</div>` +
+      `<div class="ld-nom-list">` +
+      order.map((o, i) => {
+        const elig  = teamIsEligible(o.team);
+        const isCur = i === currentIdx;
+        return `<span class="ld-nom-chip${isCur ? ' current' : ''}${elig ? '' : ' out'}" title="${escHtml(o.team)}${elig ? '' : ' — full / out of money'}">${i + 1}. ${escHtml(o.key)}</span>`;
+      }).join('') +
+      `</div>`;
+  }
+
   function subscribeToPicksFeed() {
     renderTeamPanels();
     const ref = window._fbDb.ref('live_draft/picks');
@@ -3786,13 +3921,21 @@ window._MSU = {
       updateTeamDropdown();
       updatePlayerDropdown();
       renderTopAvailable();
+      renderNominationStrip();
 
       const statusEl = document.getElementById('ld-status-bar');
       if (statusEl) {
         if (_allPicks.length === 0) {
-          statusEl.innerHTML = '<span style="color:var(--text-muted)">Draft has not started yet.</span>';
+          statusEl.className = 'ld-status-bar';
+          statusEl.innerHTML = '<span style="color:var(--text-muted)">Auction draft has not started yet.</span>';
         } else {
-          statusEl.innerHTML = `<strong>Pick ${_allPicks.length}</strong> — on the clock next`;
+          const last = _allPicks[_allPicks.length - 1];
+          statusEl.className = 'ld-status-bar ld-live-banner';
+          statusEl.innerHTML =
+            `<span class="ld-live-dot"></span>` +
+            `<span><strong>LIVE</strong> — Auction Draft in progress</span>` +
+            `<span class="ld-live-count">${_allPicks.length} player${_allPicks.length === 1 ? '' : 's'} drafted</span>` +
+            (last ? `<span class="ld-last-pick">Last: ${escHtml(last.player || '')} → ${escHtml(last.team || '')}${last.bid ? ` ($${last.bid})` : ''}</span>` : '');
         }
       }
     });
@@ -3848,8 +3991,8 @@ window._MSU = {
       const keptClass    = maxBudget  ? ' maxed' : '';
       const playersClass = maxPlayers ? ' maxed' : '';
 
-      return `<div class="ld-team-card${faded ? ' faded' : ''}">
-        <div class="ld-tc-name" title="${escHtml(team)}">${escHtml(team)}</div>
+      return `<div class="ld-team-card clickable${faded ? ' faded' : ''}" data-team="${escHtml(team)}" title="View ${escHtml(team)}'s roster">
+        <div class="ld-tc-name">${escHtml(team)}</div>
         <div class="ld-tc-stats">
           <div class="ld-tc-row">
             <span>Players</span>
@@ -3869,6 +4012,16 @@ window._MSU = {
 
     leftEl.innerHTML  = '<div class="ld-tc-panel-label">Teams</div>' + leftTeams.map(teamCardHtml).join('');
     rightEl.innerHTML = '<div class="ld-tc-panel-label">Teams</div>' + rightTeams.map(teamCardHtml).join('');
+
+    // Click a team to jump to its (live-updating) roster page.
+    [leftEl, rightEl].forEach(panel => {
+      panel.querySelectorAll('.ld-team-card[data-team]').forEach(card => {
+        card.addEventListener('click', () => {
+          const t = card.dataset.team;
+          if (window.showTeamDetail) window.showTeamDetail(t);
+        });
+      });
+    });
   }
 
   /* ── Render the draft board ──────────────────────────────────────────────── */
@@ -3945,15 +4098,34 @@ window._MSU = {
 
     card.querySelector('.ld-edit-cancel-btn').addEventListener('click', () => renderBoard(_allPicks));
 
+    // Auto-detect position when the player name changes.
+    const epInp = card.querySelector('.ld-ep');
+    const eoSel = card.querySelector('.ld-eo');
+    if (epInp && eoSel) {
+      const autoPos = () => { const p = posForPlayer(epInp.value.trim()); if (p) eoSel.value = p; };
+      epInp.addEventListener('input', autoPos);
+      epInp.addEventListener('change', autoPos);
+    }
+
     card.querySelector('.ld-edit-save-btn').addEventListener('click', async () => {
       const newTeam   = card.querySelector('.ld-et').value;
       const newPlayer = card.querySelector('.ld-ep').value.trim();
-      const newPos    = card.querySelector('.ld-eo').value;
+      const newPos    = posForPlayer(newPlayer) || card.querySelector('.ld-eo').value;
       const newBid    = parseInt(card.querySelector('.ld-eb').value);
       if (!newTeam)           { alert('Please select a team.'); return; }
       if (!newPlayer)         { alert('Please enter a player name.'); return; }
-      if (!newPos)            { alert('Please select a position.'); return; }
+      if (!newPos)            { alert('Could not detect a position — pick one from the dropdown.'); return; }
       if (!newBid || newBid < 1) { alert('Please enter an auction value ($1 or more).'); return; }
+      // Cap check — exclude this pick's current contribution if it stays on the same team.
+      {
+        const eb = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[newTeam];
+        const er = (LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[newTeam]) || [];
+        let kept    = eb ? parseInt(eb.totalKept)   || 0 : 0;
+        let players = eb ? parseInt(eb.playerCount) || er.filter(r => r.val2026 !== 'TBD').length : er.filter(r => r.val2026 !== 'TBD').length;
+        if (pick.team === newTeam) { kept -= (parseInt(pick.bid) || 0); players -= 1; }
+        if (players + 1 > 16)   { alert(`${newTeam} would exceed 16 players.`); return; }
+        if (kept + newBid > 200) { alert(`${newTeam} only has $${200 - kept} of cap room — a $${newBid} bid would put them over $200.`); return; }
+      }
       const saveBtn = card.querySelector('.ld-edit-save-btn');
       saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
       try {
@@ -4006,22 +4178,34 @@ window._MSU = {
     if (!submitBtn || submitBtn._wired) return;
     submitBtn._wired = true;
 
+    // ── Auto-detect position from the selected player ─────────────────────────
+    const playerInp = document.getElementById('ld-pick-player');
+    const posSel    = document.getElementById('ld-pick-pos');
+    if (playerInp && posSel && !playerInp._posWired) {
+      playerInp._posWired = true;
+      const autoPos = () => { const p = posForPlayer(playerInp.value.trim()); if (p) posSel.value = p; };
+      playerInp.addEventListener('input', autoPos);
+      playerInp.addEventListener('change', autoPos);
+    }
+
     document.getElementById('ld-submit-pick').addEventListener('click', async () => {
       const team   = document.getElementById('ld-pick-team').value;
       const player = document.getElementById('ld-pick-player').value.trim();
-      const pos    = document.getElementById('ld-pick-pos').value;
+      // Position auto-detected from the player; dropdown is just a fallback/override.
+      const pos    = posForPlayer(player) || document.getElementById('ld-pick-pos').value;
       const bid    = parseInt(document.getElementById('ld-pick-bid').value);
       if (!team)            { alert('Please select a team.'); return; }
       if (!player)          { alert('Please enter a player name.'); return; }
-      if (!pos)             { alert('Please select a position.'); return; }
+      if (!pos)             { alert('Could not detect a position for this player — pick the position from the dropdown.'); return; }
       if (!bid || bid < 1)  { alert('Please enter an auction value ($1 or more).'); return; }
-      // Block maxed-out teams
+      // Block maxed-out teams and bids that would breach the $200 cap / 16-player limit
       const _tb = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
       const _tr = LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[team] || [];
       const _tkept    = _tb ? parseInt(_tb.totalKept)   || 0 : 0;
       const _tplayers = _tb ? parseInt(_tb.playerCount) || _tr.filter(r => r.val2026 !== 'TBD').length : _tr.filter(r => r.val2026 !== 'TBD').length;
       if (_tplayers >= 16) { alert(`${team} already has ${_tplayers} players (max 16). Pick a different team.`); return; }
       if (_tkept >= 200)   { alert(`${team} is at or over the $200 budget (currently $${_tkept}). Pick a different team.`); return; }
+      if (_tkept + bid > 200) { alert(`${team} only has $${200 - _tkept} left — a $${bid} bid would put them over the $200 cap.`); return; }
       const btn = document.getElementById('ld-submit-pick');
       btn.disabled = true; btn.textContent = 'Submitting…';
       try {
@@ -4049,6 +4233,26 @@ window._MSU = {
       btn.disabled = true; btn.textContent = 'Saving…';
 
       try {
+        // Drop any leftover TBD (undrafted Restricted FA) placeholders — they were
+        // released into the pool but never drafted, so they shouldn't stay on rosters.
+        let _tbdRemoved = 0;
+        for (const t of Object.keys(LEAGUE_DATA.rosters || {})) {
+          const before = (LEAGUE_DATA.rosters[t] || []).length;
+          LEAGUE_DATA.rosters[t] = (LEAGUE_DATA.rosters[t] || []).filter(r => String(r.val2026) !== 'TBD');
+          _tbdRemoved += before - LEAGUE_DATA.rosters[t].length;
+        }
+        // Recompute budgets after the TBD purge so totals stay accurate.
+        for (const team of Object.keys(LEAGUE_DATA.budgets || {})) {
+          const b      = LEAGUE_DATA.budgets[team];
+          const roster = LEAGUE_DATA.rosters[team] || [];
+          const totalKept = roster.reduce((s, r) => s + (parseInt(r.val2026) || 0), 0);
+          const budget    = parseInt(b.budget) || 200;
+          b.totalKept   = String(totalKept);
+          b.playerCount = String(roster.filter(r => r.val2026 !== 'TBD').length);
+          b.remaining   = String(budget - totalKept);
+          b.inSeasonFaab = String(budget - totalKept + 25);
+        }
+
         // Push updated rosters/budgets to Firebase for live viewers
         const _ts = Date.now();
         window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
@@ -4076,7 +4280,7 @@ window._MSU = {
         await window._fbDb.ref('live_draft/picks').remove();
 
         btn.disabled = false; btn.textContent = '📋 Finalize Draft';
-        window.commSave.showToast('✓ Draft finalized — rosters saved, board cleared');
+        window.commSave.showToast(`✓ Draft finalized — rosters saved, board cleared${_tbdRemoved ? `, ${_tbdRemoved} undrafted TBD removed` : ''}`);
       } catch(e) {
         alert('Failed to finalize draft: ' + e.message);
         btn.disabled = false; btn.textContent = '📋 Finalize Draft';
