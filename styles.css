@@ -1725,10 +1725,12 @@
   .ld-top-player { display:flex; align-items:baseline; gap:5px; padding:3px 0; font-size:11px; border-bottom:1px solid rgba(255,255,255,0.04); }
   .ld-top-player:last-child { border-bottom:none; }
   .ld-top-rank   { color:var(--text-muted); font-size:10px; width:16px; flex-shrink:0; text-align:right; }
-  .ld-top-pname  { flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ld-top-pname  { flex:1 1 auto; min-width:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ld-top-pteam  { color:var(--text-muted); font-size:10px; flex-shrink:0; }
   .ld-rfa-badge  { display:inline-block; font-size:9px; font-weight:700; letter-spacing:.04em; color:var(--yellow); background:rgba(255,216,77,.15); border:1px solid rgba(255,216,77,.4); border-radius:4px; padding:0 4px; margin-left:5px; vertical-align:middle; }
-  .ld-top-pteam.rfa { color:var(--yellow); }
+  /* RFA rights-team names are long; let them shrink/ellipsis so the player
+     name (flex:1) keeps priority instead of being truncated. */
+  .ld-top-pteam.rfa { color:var(--yellow); flex:0 1 auto; min-width:0; max-width:42%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   /* Live banner (auction) */
   @keyframes rdpulse { 0%,100%{opacity:1} 50%{opacity:.25} }

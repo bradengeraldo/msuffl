@@ -3429,6 +3429,13 @@ window._MSU = {
       if (typeof buildDraft === 'function' && !document.querySelector('#page-draft .comm-page-editbar')) buildDraft();
       if (page === 'keepers'   && typeof buildKeepers === 'function') buildKeepers();
       if (page === 'keepers'   && typeof window.kpRender === 'function') window.kpRender();
+      // Keep the Live Draft board's base rosters in sync with freshly-pulled data
+      // so a viewer's board reflects e.g. the commissioner releasing non-keepers
+      // without needing a hard reload. Only when the board has been initialized;
+      // refreshLiveDraftBase itself guards against re-snapshotting mid-auction.
+      if (window._ldBaseRosters && typeof window.refreshLiveDraftBase === 'function') {
+        try { window.refreshLiveDraftBase(); } catch(e){}
+      }
     }
 
     async function applyLatestData(force) {
@@ -4028,7 +4035,7 @@ window._MSU = {
           ${players.map(p => `<div class="ld-top-player">
             <span class="ld-top-rank">${p.rank < 9999 ? p.rank : '—'}</span>
             <span class="ld-top-pname">${escHtml(p.name)}${p.rfa ? '<span class="ld-rfa-badge">RFA</span>' : ''}</span>
-            <span class="ld-top-pteam${p.rfa ? ' rfa' : ''}">${p.rfa ? escHtml(p.rightsTeam || 'RFA') : (p.nflTeam ? escHtml(p.nflTeam) : 'TBD')}</span>
+            <span class="ld-top-pteam${p.rfa ? ' rfa' : ''}"${p.rfa ? ` title="RFA rights: ${escHtml(p.rightsTeam || '')}"` : ''}>${p.rfa ? escHtml(p.rightsTeam || 'RFA') : (p.nflTeam ? escHtml(p.nflTeam) : 'TBD')}</span>
           </div>`).join('')}
         </div>`;
       }).join('') +
@@ -4233,15 +4240,13 @@ window._MSU = {
       return;
     }
     const teamOpts = (LEAGUE_DATA.teams||[]).map(t=>`<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
-    const rounds = [];
-    for (let i = 0; i < picks.length; i += 12) rounds.push(picks.slice(i, i+12));
-    board.innerHTML = rounds.map((round, ri) => `
-      <div class="ld-round">
-        <div class="ld-round-label">Round ${ri+1}</div>
-        <div class="ld-picks-row">
-          ${round.map((p, pi) => `
+    // Auction draft — no fixed rounds, so render every pick in one continuous row.
+    // Newest picks first (top); older picks flow down. Pick numbers still reflect
+    // the actual draft order, so the most recent shows the highest number.
+    board.innerHTML = `<div class="ld-picks-row">` +
+      picks.slice().reverse().map((p, i) => `
             <div class="ld-pick-card" data-key="${escHtml(p._key||'')}">
-              <div class="ld-pick-num">#${ri*12+pi+1}</div>
+              <div class="ld-pick-num">#${picks.length - i}</div>
               <div class="ld-pick-actions">
                 <button class="ld-pick-act-btn edit" title="Edit">✏</button>
                 <button class="ld-pick-act-btn del"  title="Delete">✕</button>
@@ -4250,9 +4255,8 @@ window._MSU = {
               <div class="ld-pick-player">${escHtml(p.player||'')}</div>
               <div class="ld-pick-team">${escHtml(p.team||'')}</div>
               ${p.bid ? `<div class="ld-pick-bid">$${p.bid}</div>` : ''}
-            </div>`).join('')}
-        </div>
-      </div>`).join('');
+            </div>`).join('') +
+      `</div>`;
 
     if (isComm) {
       board.querySelectorAll('.ld-pick-act-btn.edit').forEach(btn => {
@@ -4498,8 +4502,13 @@ window._MSU = {
      captured at init, so without re-capturing it would keep showing the old
      (full) rosters until a hard reload. */
   window.refreshLiveDraftBase = function refreshLiveDraftBase() {
-    window._ldBaseRosters = JSON.parse(JSON.stringify(LEAGUE_DATA.rosters || {}));
-    window._ldBaseBudgets  = JSON.parse(JSON.stringify(LEAGUE_DATA.budgets  || {}));
+    // Only re-snapshot the pre-draft base when the auction hasn't started. Once
+    // picks exist the base must stay fixed, or rebuildRostersFromPicks would
+    // layer the already-baked picks on top of themselves (double-counting).
+    if (!_allPicks || _allPicks.length === 0) {
+      window._ldBaseRosters = JSON.parse(JSON.stringify(LEAGUE_DATA.rosters || {}));
+      window._ldBaseBudgets  = JSON.parse(JSON.stringify(LEAGUE_DATA.budgets  || {}));
+    }
     try { rebuildRostersFromPicks(_allPicks || []); } catch(e){}
     try { renderBoard(_allPicks || []); } catch(e){}
     try { renderTeamPanels(); } catch(e){}
