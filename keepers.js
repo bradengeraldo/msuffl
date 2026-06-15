@@ -172,12 +172,22 @@
       LEAGUE_DATA.rosters[team] = keptRows.concat(rfaRows);
     });
     Object.keys(LEAGUE_DATA.rosters).forEach(recomputeBudget);
-    if (window.commSave) await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, 'Commissioner: release non-keepers — build auction rosters');
+    let saved = false;
+    if (window.commSave) {
+      saved = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, 'Commissioner: release non-keepers — build auction rosters');
+    }
     pushToFirebase();
     if (typeof buildKeepers === 'function') { try { buildKeepers(); } catch(e){} }
     if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e){} }
+    // Re-capture the Live Draft board's base rosters so it reflects the new
+    // auction rosters immediately instead of needing a hard reload.
+    if (typeof window.refreshLiveDraftBase === 'function') { try { window.refreshLiveDraftBase(); } catch(e){} }
     renderPortal();
-    alert('✓ Auction rosters built. The Live Draft pool now shows un-kept players plus Restricted FAs (flagged RFA with their rights team). Kept players are off the board.');
+    if (saved) {
+      alert('✓ Auction rosters built and saved. The Live Draft board now shows un-kept players plus Restricted FAs (flagged RFA with their rights team). Kept players are off the board.');
+    } else {
+      alert('⚠️ Auction rosters were built in THIS browser and the Live Draft board has been refreshed — but the save did NOT confirm, so the change has not been published to the league.\n\nThis usually means you are not logged in as commissioner with a valid GitHub token. Click the 🔒 icon to log in, then run "Release non-keepers → build auction rosters" again so it persists.\n\nDo NOT reload this page until it saves, or the change will be lost.');
+    }
   }
 
   async function restoreFullRosters() {

@@ -4493,6 +4493,22 @@ window._MSU = {
     });
   }
 
+  /* ── Refresh the board's base rosters/budgets after a commissioner action ──
+     (e.g. releasing non-keepers). The board renders from a one-time snapshot
+     captured at init, so without re-capturing it would keep showing the old
+     (full) rosters until a hard reload. */
+  window.refreshLiveDraftBase = function refreshLiveDraftBase() {
+    window._ldBaseRosters = JSON.parse(JSON.stringify(LEAGUE_DATA.rosters || {}));
+    window._ldBaseBudgets  = JSON.parse(JSON.stringify(LEAGUE_DATA.budgets  || {}));
+    try { rebuildRostersFromPicks(_allPicks || []); } catch(e){}
+    try { renderBoard(_allPicks || []); } catch(e){}
+    try { renderTeamPanels(); } catch(e){}
+    try { updateTeamDropdown(); } catch(e){}
+    try { updatePlayerDropdown(); } catch(e){}
+    try { renderTopAvailable(); } catch(e){}
+    try { renderNominationStrip(); } catch(e){}
+  };
+
   /* ── Init on page load ───────────────────────────────────────────────────── */
   function init() {
     setupLiveDraftUI();
