@@ -1,5 +1,17 @@
 // ===================== DATA =====================
 
+// Self-reported build of THIS file. Stamped into the on-screen build marker so we
+// can tell whether app.js itself actually updated on the server — the index.html
+// stamp only proves index.html updated, not this script.
+const APP_BUILD = '2026-06-14g';
+(function stampAppBuild(){
+  function paint(){
+    const el = document.getElementById('app-build');
+    if (el) el.textContent = APP_BUILD;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
+  else paint();
+})();
 
 const MGR_TO_TEAM = LEAGUE_DATA.managers;
 const TEAM_TO_MGR = Object.fromEntries(Object.entries(MGR_TO_TEAM).map(([k,v]) => [v,k]));
