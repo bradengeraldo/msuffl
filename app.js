@@ -660,10 +660,13 @@ window.__applyRookieLive = function applyRookieLive() {
   } else {
     LEAGUE_DATA.liveRookieDraft = { active: false };
   }
-  // Never disturb the commissioner's edit table; viewers re-render the board.
+  // Never disturb the commissioner's edit table. For everyone else, rebuild the
+  // board now even if the Rookie Draft tab isn't the one on screen — pages are
+  // built once and only toggled, so without this the draft shows whatever was
+  // rendered at load until you switch year tabs. Rebuilding keeps it current the
+  // moment the tab is opened.
   if (document.querySelector('.comm-page-editbar')) return;
-  const activePage = ((document.querySelector('.nav-btn.active') || {}).dataset || {}).page;
-  if (activePage === 'draft' && typeof buildDraft === 'function') buildDraft();
+  if (typeof buildDraft === 'function') buildDraft();
 };
 
 // ===================== TRADES PAGE =====================
@@ -2858,6 +2861,12 @@ window._MSU = {
     document.querySelectorAll('.de-via').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].via = el.value); });
     document.querySelectorAll('.de-player').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].player = el.value); });
     LEAGUE_DATA.drafts[yr] = picks.filter(p => p.player || p.team);
+
+    // Instantly broadcast the live board to every viewer on Save (same dedicated
+    // realtime node as the auction). Without this, a Save only propagated via the
+    // slow blob path, so viewers could sit on an old pick until they re-opened
+    // the tab. publishDraftLive also writes the blob below for permanence.
+    publishDraftLive();
 
     // Push to Firebase immediately via REST (no SDK dependency).
     // Write the FULL leagueData blob (what the reader prefers) so picks persist even
