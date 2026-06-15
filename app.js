@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-06-14g';
+const APP_BUILD = '2026-06-14h';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -679,12 +679,13 @@ window.__applyRookieLive = function applyRookieLive() {
   LEAGUE_DATA.liveRookieDraft = (rl && rl.active && rl.year)
     ? { active: true, year: String(rl.year), ts: rl.ts || Date.now() }
     : { active: false };
-  // Never disturb the commissioner's edit table. For everyone else, rebuild the
-  // board now even if the Rookie Draft tab isn't the one on screen — pages are
-  // built once and only toggled, so without this the draft shows whatever was
-  // rendered at load until you switch year tabs. Rebuilding keeps it current the
-  // moment the tab is opened.
-  if (document.querySelector('.comm-page-editbar')) return;
+  // Never disturb the commissioner's rookie-draft edit table while it's open.
+  // IMPORTANT: scope this to the draft page only. The live AUCTION page also
+  // contains a `.comm-page-editbar` (its draft controls), which is in the DOM for
+  // EVERYONE — a bare `.comm-page-editbar` selector matched it for every viewer and
+  // silently blocked all rookie-draft redraws (data updated but the board never
+  // re-rendered until a manual tab click). That was the core bug.
+  if (document.querySelector('#page-draft .comm-page-editbar')) return;
   if (typeof buildDraft === 'function') buildDraft();
 };
 
@@ -3342,7 +3343,7 @@ window._MSU = {
       // only toggled on nav, never re-rendered, so without this a synced pick stays
       // hidden until the viewer clicks a year tab. This is the safety net for when
       // the SDK websocket channel is unavailable (e.g. mobile private browsing).
-      if (typeof buildDraft === 'function' && !document.querySelector('.comm-page-editbar')) buildDraft();
+      if (typeof buildDraft === 'function' && !document.querySelector('#page-draft .comm-page-editbar')) buildDraft();
       if (page === 'keepers'   && typeof buildKeepers === 'function') buildKeepers();
       if (page === 'submitkeepers' && typeof window.kpRender === 'function') window.kpRender();
     }
@@ -3369,7 +3370,12 @@ window._MSU = {
           } catch(e) {}
         }
 
-        if (document.querySelector('.comm-page-editbar')) return;
+        // Only skip syncing when a commissioner PAGE editor is actually open
+        // (trades / rookie draft / write-ups), to avoid clobbering unsaved edits.
+        // Must be scoped to those page containers — the auction page's static
+        // `.comm-page-editbar` is always in the DOM and a bare selector here froze
+        // ALL data sync for every viewer.
+        if (document.querySelector('#page-draft .comm-page-editbar, #page-trades .comm-page-editbar, #page-writeups .comm-page-editbar')) return;
 
         // Version changed — fetch full league data (stored as JSON string to preserve arrays)
         const dRes = await fetch(`${FB_DB_URL}/league_data/leagueData.json?t=${Date.now()}`);
