@@ -4000,6 +4000,12 @@ window._MSU = {
         if (r.player && r.val2026 !== 'TBD') rostered.add(normalizeName(r.player));
       }
     }
+    // Also drop anyone already drafted on the live board, so a just-picked
+    // player can't reappear in the pool if the roster snapshot briefly lags
+    // (e.g. right after the board is cleared on finalize).
+    for (const p of (_allPicks || [])) {
+      if (p.player) rostered.add(normalizeName(p.player));
+    }
     return _ldPlayerPool.filter(p => !rostered.has(normalizeName(p.name)));
   }
 
