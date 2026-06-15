@@ -75,18 +75,6 @@ function formatPos(pos) {
 
 // ===================== HOME PAGE =====================
 function buildHome() {
-  // Quick stats
-  const stats = document.getElementById('quick-stats');
-  const totalPlayers = Object.values(LEAGUE_DATA.rosters).reduce((s,r) => s + r.length, 0);
-  const totalTrades = Object.values(LEAGUE_DATA.trades).reduce((s,t) => s + t.length, 0);
-  const draftYears = Object.keys(LEAGUE_DATA.drafts).length;
-  stats.innerHTML = `
-    <div class="stat-pill"><strong>${Object.keys(LEAGUE_DATA.rosters).length}</strong> Teams</div>
-    <div class="stat-pill"><strong>${totalPlayers}</strong> Rostered Players</div>
-    <div class="stat-pill"><strong>${totalTrades}</strong> Total Trades</div>
-    <div class="stat-pill"><strong>15</strong> Seasons Since 2011</div>
-  `;
-
   const grid = document.getElementById('home-teams-grid');
 
   // Map current team name -> owner full name using the most recent season,
