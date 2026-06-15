@@ -727,6 +727,20 @@ window.__applyRookieLive = function applyRookieLive() {
 };
 
 // ===================== TRADES PAGE =====================
+// Per-year line-item groupings derived from the original Master Workbook
+// (blank rows there separate the two+ sides of each trade). Stored here in
+// code — not in LEAGUE_DATA — so the Firebase blob sync can't overwrite it.
+// Each array lists the number of consecutive line items in each trade.
+const TRADE_GROUPS = {
+  "2019": [2,2,2,2,2,2,2,2,2,2,1,2],
+  "2020": [2,2,2,2,2,2,2,2,2,2,2,2,2],
+  "2021": [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+  "2022": [2,2,2,2,2,2,2,2,2,2,2,2,2],
+  "2023": [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2],
+  "2024": [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  "2025": [2,2,2,1,2,2,2,2,2,2,2],
+};
+
 function buildTrades() {
   const tabsEl = document.getElementById('trades-year-tabs');
   const contentEl = document.getElementById('trades-content');
@@ -742,14 +756,31 @@ function buildTrades() {
       contentEl.innerHTML = '<div class="empty-state">No trades recorded for this year.</div>';
       return;
     }
-    contentEl.innerHTML = `<div class="trades-list">` +
-      trades.map(t => `
+    const entryHtml = t => `
         <div class="trade-entry">
           <div class="trade-manager">${escHtml(t.manager || t.managerOriginal)}</div>
           <div class="trade-arrow">received →</div>
           <div class="trade-received">${escHtml(t.received)}</div>
-        </div>`).join('') +
-      `</div>`;
+        </div>`;
+    // Group consecutive line items per the workbook grouping, with a gap
+    // between trades. Any entries beyond the known grouping (e.g. a newly
+    // added trade) each render as their own group.
+    const sizes = (TRADE_GROUPS[year] || []).slice();
+    let html = `<div class="trades-list">`;
+    let i = 0;
+    if (sizes.length) {
+      for (const size of sizes) {
+        if (i >= trades.length) break;
+        html += `<div class="trade-group">`;
+        for (let k = 0; k < size && i < trades.length; k++, i++) html += entryHtml(trades[i]);
+        html += `</div>`;
+      }
+      while (i < trades.length) { html += `<div class="trade-group">${entryHtml(trades[i++])}</div>`; }
+    } else {
+      html += `<div class="trade-group">${trades.map(entryHtml).join('')}</div>`;
+    }
+    html += `</div>`;
+    contentEl.innerHTML = html;
   }
 
   tabsEl.querySelectorAll('.year-tab').forEach(tab => {
