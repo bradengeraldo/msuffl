@@ -88,32 +88,77 @@ function buildHome() {
   `;
 
   const grid = document.getElementById('home-teams-grid');
-  const teams = Object.keys(LEAGUE_DATA.rosters).sort();
-  grid.innerHTML = teams.map(team => {
+
+  // Map current team name -> owner full name using the most recent season,
+  // so we can pull career stats (seasons, win%, titles) from HISTORY_DATA.
+  const teamToOwner = {};
+  const histYears = (HISTORY_DATA.years || []).slice().sort((a,b) => b - a);
+  const latestSeason = histYears.length ? HISTORY_DATA.seasons[histYears[0]] : null;
+  if (latestSeason) {
+    latestSeason.teams.forEach(t => { teamToOwner[t.name] = t.owner; });
+  }
+  // Fallback: team names occasionally differ in spelling between the roster
+  // data and the history data, so also resolve via the manager's first name.
+  const ownerFirstName = {};
+  Object.keys(HISTORY_DATA.ownerStats).forEach(o => {
+    ownerFirstName[o.split(' ')[0].toLowerCase()] = o;
+  });
+
+  // Build per-team career stats, then sort most-decorated first
+  // (titles desc, then win% desc, then name) so the trophy case leads.
+  const teamRows = Object.keys(LEAGUE_DATA.rosters).map(team => {
     const mgr = TEAM_TO_MGR[team] || team;
-    const budget = LEAGUE_DATA.budgets[team];
-    const roster = LEAGUE_DATA.rosters[team] || [];
-    const rem = budget ? parseInt(budget.remaining) : 0;
-    return `<div class="team-card" data-team="${escHtml(team)}">
-      <div class="team-name">${escHtml(team)}</div>
-      <div class="team-manager">${mgr}</div>
+    let owner = teamToOwner[team];
+    if (!owner) {
+      const firstKey = (mgr.split(/[\/ ]/)[0] || '').toLowerCase();
+      owner = ownerFirstName[firstKey];
+    }
+    const ostats = owner ? HISTORY_DATA.ownerStats[owner] : null;
+    return {
+      team, mgr,
+      seasons: ostats ? ostats.seasons_played : '—',
+      wpct: ostats ? ostats.wpct : -1,
+      winPct: ostats ? (ostats.wpct * 100).toFixed(1) + '%' : '—',
+      titles: ostats ? ostats.titles : 0,
+    };
+  });
+  teamRows.sort((a, b) =>
+    b.titles - a.titles ||
+    b.wpct - a.wpct ||
+    a.team.localeCompare(b.team)
+  );
+
+  const cardHtml = r => `<div class="team-card" data-team="${escHtml(r.team)}">
+      <div class="team-name">${escHtml(r.team)}</div>
+      <div class="team-manager">${r.mgr}</div>
       <div class="team-stats-row">
         <div class="team-mini-stat">
-          <span class="val">${roster.length}</span>
-          <span class="lbl">Players</span>
-        </div>
-        ${budget ? `
-        <div class="team-mini-stat">
-          <span class="val ${rem >= 0 ? 'positive' : 'negative'}">${rem >= 0 ? '+' : ''}${rem}</span>
-          <span class="lbl">FAAB Left</span>
+          <span class="val">${r.seasons}</span>
+          <span class="lbl">Seasons</span>
         </div>
         <div class="team-mini-stat">
-          <span class="val">${budget.playerCount}</span>
-          <span class="lbl">Keepers</span>
-        </div>` : ''}
+          <span class="val">${r.winPct}</span>
+          <span class="lbl">Win %</span>
+        </div>
+        <div class="team-mini-stat">
+          <span class="val">${r.titles}${r.titles ? ' 🏆' : ''}</span>
+          <span class="lbl">${r.titles === 1 ? 'Title' : 'Titles'}</span>
+        </div>
       </div>
     </div>`;
-  }).join('');
+
+  // Group the sorted teams into championship tiers.
+  const categories = [
+    { title: 'Multi-time Champions', rows: teamRows.filter(r => r.titles >= 2) },
+    { title: 'One-time Champions',   rows: teamRows.filter(r => r.titles === 1) },
+    { title: 'Yet-to-be Champions',  rows: teamRows.filter(r => r.titles === 0) },
+  ];
+  grid.innerHTML = categories
+    .filter(c => c.rows.length)
+    .map((c, i) => `
+      <div class="section-title"${i ? ' style="margin-top:2rem"' : ''}>${c.title}</div>
+      <div class="teams-grid">${c.rows.map(cardHtml).join('')}</div>
+    `).join('');
   grid.addEventListener('click', e => {
     const card = e.target.closest('.team-card[data-team]');
     if (card) showTeamDetail(card.dataset.team);
