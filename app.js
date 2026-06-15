@@ -44,8 +44,10 @@ document.querySelector('.nav-btn[data-page="keepers"]')
     _origSP(pageId);
     if (pageId) history.replaceState(null, '', location.pathname + '#' + pageId);
   };
-  // On load, navigate to the hash page (if any)
-  const hashPage = location.hash.slice(1);
+  // On load, navigate to the hash page (if any).
+  // 'submitkeepers' was merged into the 2026 Keepers tab — redirect old links.
+  let hashPage = location.hash.slice(1);
+  if (hashPage === 'submitkeepers') hashPage = 'keepers';
   if (hashPage) {
     // May run before DOM-built pages are ready; defer slightly
     if (document.readyState === 'loading') {
@@ -562,7 +564,7 @@ function buildKeepers() {
       : `👁️ <strong>Commissioner preview.</strong> Keepers are still hidden from managers until you click “Lock all keepers (close window)”. ${submitted}/${teams.length} teams have submitted.`;
   } else {
     banner.className = 'keepers-status-banner hidden-state';
-    banner.innerHTML = `🙈 <strong>Keepers are hidden until the submission window closes.</strong> ${submitted}/${teams.length} teams have submitted. Everyone’s keepers will appear here once the commissioner locks them.`;
+    banner.innerHTML = `<strong>Keepers are hidden until the submission window closes.</strong> ${submitted}/${teams.length} teams have submitted. Everyone’s keepers will appear here once the commissioner locks them.`;
   }
 
   // ── Hidden state: show only submission status, not the picks ──────────────
@@ -3378,7 +3380,7 @@ window._MSU = {
       // the SDK websocket channel is unavailable (e.g. mobile private browsing).
       if (typeof buildDraft === 'function' && !document.querySelector('#page-draft .comm-page-editbar')) buildDraft();
       if (page === 'keepers'   && typeof buildKeepers === 'function') buildKeepers();
-      if (page === 'submitkeepers' && typeof window.kpRender === 'function') window.kpRender();
+      if (page === 'keepers'   && typeof window.kpRender === 'function') window.kpRender();
     }
 
     async function applyLatestData(force) {

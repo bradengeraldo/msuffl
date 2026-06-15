@@ -519,10 +519,10 @@
   window.kpRender = renderPortal;
 
   function init() {
-    const navBtn = document.querySelector('.nav-btn[data-page="submitkeepers"]');
+    const navBtn = document.querySelector('.nav-btn[data-page="keepers"]');
     if (navBtn) navBtn.addEventListener('click', async () => { await fetchLatest(); renderPortal(); });
     renderPortal();
-    if (location.hash === '#submitkeepers') { fetchLatest().then(renderPortal); }
+    if (location.hash === '#keepers' || location.hash === '#submitkeepers') { fetchLatest().then(renderPortal); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
