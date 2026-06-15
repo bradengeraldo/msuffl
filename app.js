@@ -586,8 +586,11 @@ function buildDraft() {
     document.head.appendChild(st);
   }
 
+  // Year shown after a rebuild: the live year always wins; otherwise keep whatever
+  // tab the viewer was last looking at so background refreshes don't yank them away.
+  const defaultYear = liveYear || (years.includes(window.__draftYearShown) ? window.__draftYearShown : years[0]);
   tabsEl.innerHTML = years.map((yr) =>
-    `<button class="year-tab ${(liveYear ? yr === liveYear : yr === years[0]) ? 'active' : ''}" data-year="${yr}">${yr}${yr === liveYear ? ' 🔴' : ''}</button>`
+    `<button class="year-tab ${yr === defaultYear ? 'active' : ''}" data-year="${yr}">${yr}${yr === liveYear ? ' 🔴' : ''}</button>`
   ).join('');
 
   function renderDraft(year) {
@@ -641,11 +644,12 @@ function buildDraft() {
     tab.addEventListener('click', function() {
       tabsEl.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
       this.classList.add('active');
+      window.__draftYearShown = this.dataset.year;
       renderDraft(this.dataset.year);
     });
   });
 
-  if (years.length) renderDraft(liveYear || years[0]);
+  if (years.length) { window.__draftYearShown = defaultYear; renderDraft(defaultYear); }
 }
 
 // Applies the instant rookie-draft realtime node (live_draft/rookie) into
@@ -654,12 +658,15 @@ function buildDraft() {
 // rookie-draft twin of the auction board's live_draft/picks listener.
 window.__applyRookieLive = function applyRookieLive() {
   const rl = window.__rookieLive;
-  if (rl && rl.active && rl.year) {
-    LEAGUE_DATA.liveRookieDraft = { active: true, year: String(rl.year), ts: rl.ts || Date.now() };
-    if (Array.isArray(rl.picks) && rl.picks.length) LEAGUE_DATA.drafts[String(rl.year)] = rl.picks;
-  } else {
-    LEAGUE_DATA.liveRookieDraft = { active: false };
+  // Always fold the broadcast picks into LEAGUE_DATA (the node is the always-on
+  // instant channel, like the auction's live_draft/picks) — the `active` flag only
+  // controls whether the red LIVE banner / on-the-clock row is shown.
+  if (rl && rl.year && Array.isArray(rl.picks) && rl.picks.length) {
+    LEAGUE_DATA.drafts[String(rl.year)] = rl.picks;
   }
+  LEAGUE_DATA.liveRookieDraft = (rl && rl.active && rl.year)
+    ? { active: true, year: String(rl.year), ts: rl.ts || Date.now() }
+    : { active: false };
   // Never disturb the commissioner's edit table. For everyone else, rebuild the
   // board now even if the Rookie Draft tab isn't the one on screen — pages are
   // built once and only toggled, so without this the draft shows whatever was
@@ -2657,15 +2664,23 @@ window._MSU = {
   // Publish the draft live to all viewers via Firebase (no GitHub commit — that's on Save).
   // Writes the full leagueData blob so picks persist with or without a GitHub token.
   function publishDraftLive() {
-    const rd   = LEAGUE_DATA.liveRookieDraft || { active: false };
-    const year = rd.year ? String(rd.year) : '';
+    const rd = LEAGUE_DATA.liveRookieDraft || { active: false };
+    // Pick the year to broadcast: the live year if set, else the year being edited,
+    // else the newest draft. The node ALWAYS carries that year's picks so viewers
+    // update instantly on every Save — the `active` flag only drives the banner.
+    let year = rd.year ? String(rd.year) : '';
+    if (!year) {
+      const sel = document.getElementById('de-year');
+      if (sel && sel.value && sel.value !== '__new__') year = String(sel.value);
+    }
+    if (!year) { const ys = Object.keys(LEAGUE_DATA.drafts).sort((a, b) => b - a); year = ys[0] || ''; }
     // Small, dedicated realtime node — IDENTICAL mechanism to the live auction
     // board (live_draft/picks). The SDK push lands in every browser instantly.
     const node = {
       active: !!rd.active,
       year:   year,
       ts:     Date.now(),
-      picks:  (rd.active && year && Array.isArray(LEAGUE_DATA.drafts[year])) ? LEAGUE_DATA.drafts[year] : []
+      picks:  (year && Array.isArray(LEAGUE_DATA.drafts[year])) ? LEAGUE_DATA.drafts[year] : []
     };
     if (window._fbDb) {
       try { window._fbDb.ref('live_draft/rookie').set(node); }
@@ -3314,7 +3329,11 @@ window._MSU = {
       const page = (document.querySelector('.nav-btn.active') || {}).dataset?.page;
       if (page === 'rosters'   && typeof buildRosters === 'function') buildRosters();
       if (page === 'trades'    && typeof buildTrades  === 'function') buildTrades();
-      if (page === 'draft'     && typeof buildDraft   === 'function') buildDraft();
+      // The draft is rebuilt ALWAYS (not just when it's the focused tab): pages are
+      // only toggled on nav, never re-rendered, so without this a synced pick stays
+      // hidden until the viewer clicks a year tab. This is the safety net for when
+      // the SDK websocket channel is unavailable (e.g. mobile private browsing).
+      if (typeof buildDraft === 'function' && !document.querySelector('.comm-page-editbar')) buildDraft();
       if (page === 'keepers'   && typeof buildKeepers === 'function') buildKeepers();
       if (page === 'submitkeepers' && typeof window.kpRender === 'function') window.kpRender();
     }
