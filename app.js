@@ -3335,15 +3335,27 @@ window._MSU = {
       if (page === 'submitkeepers' && typeof window.kpRender === 'function') window.kpRender();
     }
 
-    async function applyLatestData() {
+    async function applyLatestData(force) {
       try {
-        // Lightweight check: fetch only _version (tiny payload, runs every 10s)
+        // Lightweight check: fetch only _version (tiny payload, runs every 10s).
+        // When `force` is set (initial load), skip the gate entirely so a refresh
+        // ALWAYS pulls the current blob — otherwise, if _version hasn't moved since
+        // this browser last saw it (or is null), we'd bail out here and keep showing
+        // the stale embedded leagueData.js until a pick bumps the version.
         const vRes = await fetch(`${FB_DB_URL}/league_data/_version.json?t=${Date.now()}`);
-        if (!vRes.ok) return;
-        const version = await vRes.json();
-        if (!version || version <= _lastFbVersion) return;
-        _lastFbVersion = version;
-        window.__fbVersionSeen = version;   // used by the save engine's conflict guard
+        const version = vRes.ok ? await vRes.json() : 0;
+        if (!force && (!version || version <= _lastFbVersion)) return;
+        if (version) { _lastFbVersion = version; window.__fbVersionSeen = version; }
+
+        // On a forced initial sync, also pull the live rookie node directly via REST
+        // so the board (and LIVE banner) is correct even if the Firebase SDK hasn't
+        // loaded yet or is blocked (e.g. mobile private browsing).
+        if (force) {
+          try {
+            const nRes = await fetch(`${FB_DB_URL}/live_draft/rookie.json?t=${Date.now()}`);
+            if (nRes.ok) { const n = await nRes.json(); if (n) window.__rookieLive = n; }
+          } catch(e) {}
+        }
 
         if (document.querySelector('.comm-page-editbar')) return;
 
@@ -3395,8 +3407,8 @@ window._MSU = {
     } catch(e) {}
 
     // ── Polling fallback: catches up if SSE misses anything ──────────────────
-    applyLatestData();
-    setInterval(applyLatestData, 10000); // every 10s as safety net
+    applyLatestData(true);                       // forced: always render current data on load
+    setInterval(() => applyLatestData(), 10000); // every 10s as safety net (gated)
 
     // Expose so the Firebase SDK realtime listener (set up once the SDK loads in
     // initLiveDraft) can push instant updates for ALL league_data changes —
