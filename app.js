@@ -48,6 +48,8 @@ document.querySelector('.nav-btn[data-page="keepers"]')
   // 'submitkeepers' was merged into the 2026 Keepers tab — redirect old links.
   let hashPage = location.hash.slice(1);
   if (hashPage === 'submitkeepers') hashPage = 'keepers';
+  // Trades and Write Ups are now sub-tabs inside League History.
+  if (hashPage === 'trades' || hashPage === 'writeups') hashPage = 'history';
   if (hashPage) {
     // May run before DOM-built pages are ready; defer slightly
     if (document.readyState === 'loading') {
@@ -2525,6 +2527,19 @@ window._MSU = {
         }
       });
     }
+    // Trades / Write-ups moved into League History sub-tabs — inject their
+    // commissioner edit bars when those sub-tabs are opened (data-section
+    // values 'trades' / 'writeups' map directly onto commPageHook).
+    const secTabs = document.getElementById('history-section-tabs');
+    if (secTabs) {
+      secTabs.addEventListener('click', e => {
+        const tab = e.target.closest('[data-section]');
+        if (!tab) return;
+        if (window.commMode && window.commMode.isUnlocked()) {
+          setTimeout(() => commPageHook(tab.dataset.section), 50);
+        }
+      });
+    }
   });
 
   function commPageHook(pageId) {
@@ -2537,7 +2552,7 @@ window._MSU = {
      TRADES EDITOR
   ══════════════════════════════════════════════════════════ */
   function injectTradesEditBar() {
-    const page = document.getElementById('page-trades');
+    const page = document.getElementById('history-section-trades');
     if (!page || page.querySelector('.comm-page-editbar')) return;
     const bar = document.createElement('div');
     bar.className = 'comm-page-editbar';
@@ -2944,7 +2959,7 @@ window._MSU = {
      WRITEUP EDITOR
   ══════════════════════════════════════════════════════════ */
   function injectWriteupsEditBar() {
-    const page = document.getElementById('page-writeups');
+    const page = document.getElementById('history-section-writeups');
     if (!page || page.querySelector('.comm-page-editbar')) return;
     const bar = document.createElement('div');
     bar.className = 'comm-page-editbar';
@@ -3207,7 +3222,9 @@ window._MSU = {
       btn.className = 'nav-btn';
       btn.dataset.page = 'livedraft';
       btn.textContent = '🎯 Live Draft';
-      nav.appendChild(btn);
+      // Place Live Draft between "2026 Keepers" and "Trade Analyzer"
+      const taBtn = nav.querySelector('.nav-btn[data-page="tradeanalyzer"]');
+      if (taBtn) nav.insertBefore(btn, taBtn); else nav.appendChild(btn);
       btn.addEventListener('click', () => {
         // Static NodeLists don't include dynamic elements, so handle show/hide manually
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -3373,7 +3390,7 @@ window._MSU = {
     function refreshCurrentPage() {
       const page = (document.querySelector('.nav-btn.active') || {}).dataset?.page;
       if (page === 'rosters'   && typeof buildRosters === 'function') buildRosters();
-      if (page === 'trades'    && typeof buildTrades  === 'function') buildTrades();
+      if (page === 'history'   && typeof buildTrades  === 'function' && !document.querySelector('#history-section-trades .comm-page-editbar')) buildTrades();
       // The draft is rebuilt ALWAYS (not just when it's the focused tab): pages are
       // only toggled on nav, never re-rendered, so without this a synced pick stays
       // hidden until the viewer clicks a year tab. This is the safety net for when
@@ -3410,7 +3427,7 @@ window._MSU = {
         // Must be scoped to those page containers — the auction page's static
         // `.comm-page-editbar` is always in the DOM and a bare selector here froze
         // ALL data sync for every viewer.
-        if (document.querySelector('#page-draft .comm-page-editbar, #page-trades .comm-page-editbar, #page-writeups .comm-page-editbar')) return;
+        if (document.querySelector('#page-draft .comm-page-editbar, #history-section-trades .comm-page-editbar, #history-section-writeups .comm-page-editbar')) return;
 
         // Version changed — fetch full league data (stored as JSON string to preserve arrays)
         const dRes = await fetch(`${FB_DB_URL}/league_data/leagueData.json?t=${Date.now()}`);
@@ -3439,7 +3456,7 @@ window._MSU = {
         if (!fRes.ok) return;
         const data = await fRes.json();
         if (data.trades)  { LEAGUE_DATA.trades  = data.trades;
-          if (document.querySelector('.nav-btn[data-page="trades"].active') && typeof buildTrades === 'function') buildTrades(); }
+          if (document.querySelector('#history-section-trades.active') && typeof buildTrades === 'function') buildTrades(); }
         if (data.drafts)  { LEAGUE_DATA.drafts  = data.drafts;
           if (document.querySelector('.nav-btn[data-page="draft"].active') && typeof buildDraft === 'function') buildDraft(); }
         if (data.budgets) { LEAGUE_DATA.budgets = data.budgets; }

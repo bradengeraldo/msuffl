@@ -12,7 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%88%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2026-06-15b">
+<link rel="stylesheet" href="styles.css?v=2026-06-15c">
 </head>
 <body>
 
@@ -21,13 +21,11 @@
     <div class="logo">MSU<span>FFL</span></div>
     <nav id="main-nav">
       <button class="nav-btn active" data-page="home">Home</button>
-      <button class="nav-btn" data-page="history">League History</button>
       <button class="nav-btn" data-page="rosters">Rosters</button>
-      <button class="nav-btn" data-page="keepers">2026 Keepers</button>
       <button class="nav-btn" data-page="draft">Rookie Draft</button>
-      <button class="nav-btn" data-page="trades">Trades</button>
-      <button class="nav-btn" data-page="writeups">Write Ups</button>
+      <button class="nav-btn" data-page="keepers">2026 Keepers</button>
       <button class="nav-btn" data-page="tradeanalyzer">Trade Analyzer</button>
+      <button class="nav-btn" data-page="history">League History</button>
     </nav>
   <button class="nav-btn comm-lock-btn" id="comm-lock-btn" title="Commissioner login">🔒</button>
   </div>
@@ -77,20 +75,6 @@
     <div id="draft-content"></div>
   </div>
 
-  <!-- TRADES PAGE -->
-  <div class="page" id="page-trades">
-    <div class="section-title">Trade History</div>
-    <div class="year-tabs" id="trades-year-tabs"></div>
-    <div id="trades-content"></div>
-  </div>
-
-
-  <!-- WRITE UPS PAGE -->
-  <div class="page" id="page-writeups">
-    <div class="section-title">Write Ups</div>
-    <div class="year-tabs" id="writeups-year-tabs"></div>
-    <div id="writeups-content"></div>
-  </div>
 
   <!-- HISTORY PAGE -->
   <div class="page" id="page-history">
@@ -104,6 +88,8 @@
       <button class="history-section-tab" data-section="alltime">All-Time</button>
       <button class="history-section-tab" data-section="standings">By Year</button>
       <button class="history-section-tab" data-section="h2h">Head-to-Head</button>
+      <button class="history-section-tab" data-section="trades">Trades</button>
+      <button class="history-section-tab" data-section="writeups">Write Ups</button>
     </div>
 
     <!-- Champions section -->
@@ -154,6 +140,18 @@
       </div>
       <div id="h2h-summary"></div>
       <div class="h2h-grid" id="h2h-grid"></div>
+    </div>
+
+    <!-- Trades section -->
+    <div class="history-section" id="history-section-trades">
+      <div class="year-tabs" id="trades-year-tabs"></div>
+      <div id="trades-content"></div>
+    </div>
+
+    <!-- Write-ups section -->
+    <div class="history-section" id="history-section-writeups">
+      <div class="year-tabs" id="writeups-year-tabs"></div>
+      <div id="writeups-content"></div>
     </div>
   </div>
 
@@ -225,8 +223,8 @@
 <!-- Build stamp — confirm which code a browser is actually running. Bump on each deploy. -->
 <div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-06-14h · app <span id="app-build">NOT-LOADED</span></div>
 
-<script src="leagueData.js?v=2026-06-15b"></script>
-<script src="app.js?v=2026-06-15b"></script>
+<script src="leagueData.js?v=2026-06-15c"></script>
+<script src="app.js?v=2026-06-15c"></script>
 
 <!-- ===== COMMISSIONER MODE ===== -->
 
@@ -266,7 +264,7 @@
 <!-- ===== END COMMISSIONER MODE ===== -->
 
 <!-- ===== KEEPER SUBMISSION PORTAL ===== -->
-<script src="keepers.js?v=2026-06-15b"></script>
+<script src="keepers.js?v=2026-06-15c"></script>
 <!-- ===== END KEEPER SUBMISSION PORTAL ===== -->
 
 </body>
