@@ -648,6 +648,24 @@ function buildDraft() {
   if (years.length) renderDraft(liveYear || years[0]);
 }
 
+// Applies the instant rookie-draft realtime node (live_draft/rookie) into
+// LEAGUE_DATA and re-renders the board — runs in EVERY viewer's browser the
+// moment the commissioner starts/ends the draft or enters a pick. This is the
+// rookie-draft twin of the auction board's live_draft/picks listener.
+window.__applyRookieLive = function applyRookieLive() {
+  const rl = window.__rookieLive;
+  if (rl && rl.active && rl.year) {
+    LEAGUE_DATA.liveRookieDraft = { active: true, year: String(rl.year), ts: rl.ts || Date.now() };
+    if (Array.isArray(rl.picks) && rl.picks.length) LEAGUE_DATA.drafts[String(rl.year)] = rl.picks;
+  } else {
+    LEAGUE_DATA.liveRookieDraft = { active: false };
+  }
+  // Never disturb the commissioner's edit table; viewers re-render the board.
+  if (document.querySelector('.comm-page-editbar')) return;
+  const activePage = ((document.querySelector('.nav-btn.active') || {}).dataset || {}).page;
+  if (activePage === 'draft' && typeof buildDraft === 'function') buildDraft();
+};
+
 // ===================== TRADES PAGE =====================
 function buildTrades() {
   const tabsEl = document.getElementById('trades-year-tabs');
@@ -2636,9 +2654,28 @@ window._MSU = {
   // Publish the draft live to all viewers via Firebase (no GitHub commit — that's on Save).
   // Writes the full leagueData blob so picks persist with or without a GitHub token.
   function publishDraftLive() {
-    if (!window.fbSet) return;
-    window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
-    window.fbSet('league_data/_version', Date.now());
+    const rd   = LEAGUE_DATA.liveRookieDraft || { active: false };
+    const year = rd.year ? String(rd.year) : '';
+    // Small, dedicated realtime node — IDENTICAL mechanism to the live auction
+    // board (live_draft/picks). The SDK push lands in every browser instantly.
+    const node = {
+      active: !!rd.active,
+      year:   year,
+      ts:     Date.now(),
+      picks:  (rd.active && year && Array.isArray(LEAGUE_DATA.drafts[year])) ? LEAGUE_DATA.drafts[year] : []
+    };
+    if (window._fbDb) {
+      try { window._fbDb.ref('live_draft/rookie').set(node); }
+      catch(e) { console.warn('rookie live push failed:', e); if (window.fbSet) window.fbSet('live_draft/rookie', node); }
+    } else if (window.fbSet) {
+      window.fbSet('live_draft/rookie', node);
+    }
+    // Persist the full blob too (off the critical path) so picks survive a reload
+    // after the draft ends. The live UI no longer depends on this slow write.
+    if (window.fbSet) {
+      window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
+      window.fbSet('league_data/_version', Date.now());
+    }
   }
   let _draftPubTimer = null;
   function publishDraftLiveDebounced() {
@@ -3236,6 +3273,20 @@ window._MSU = {
       } catch(e) { /* fall back to REST polling in initDataSync */ }
     }
 
+    // ── Instant rookie-draft board (twin of the auction's live_draft/picks) ───
+    // Every viewer subscribes to the small live_draft/rookie node; the SDK fires
+    // immediately on load with the current value AND on every subsequent change,
+    // so picks the commissioner enters appear in every browser within a moment.
+    if (!window._rookieLiveListener) {
+      try {
+        window._fbDb.ref('live_draft/rookie').on('value', snap => {
+          window.__rookieLive = snap.val() || null;
+          if (window.__applyRookieLive) window.__applyRookieLive();
+        });
+        window._rookieLiveListener = true;
+      } catch(e) { /* fall back to REST polling in initDataSync */ }
+    }
+
     if (window.commMode && window.commMode.isUnlocked()) {
       const ctrl = document.getElementById('ld-comm-controls');
       if (ctrl) ctrl.style.display = '';
@@ -3278,6 +3329,13 @@ window._MSU = {
           if (raw) {
             const fresh = typeof raw === 'string' ? JSON.parse(raw) : raw;
             Object.assign(LEAGUE_DATA, fresh);
+            // The instant rookie node wins over the slower blob so the two
+            // channels never fight (blob can lag the live picks by a moment).
+            const rl = window.__rookieLive;
+            if (rl && rl.active && rl.year && Array.isArray(rl.picks) && rl.picks.length) {
+              LEAGUE_DATA.liveRookieDraft = { active: true, year: String(rl.year), ts: rl.ts || Date.now() };
+              LEAGUE_DATA.drafts[String(rl.year)] = rl.picks;
+            }
             await window.mergeKeeperSubmissions();
             refreshCurrentPage();
             return;
