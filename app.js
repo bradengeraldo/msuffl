@@ -2663,7 +2663,7 @@ window._MSU = {
 
   // Publish the draft live to all viewers via Firebase (no GitHub commit — that's on Save).
   // Writes the full leagueData blob so picks persist with or without a GitHub token.
-  function publishDraftLive() {
+  async function publishDraftLive() {
     const rd = LEAGUE_DATA.liveRookieDraft || { active: false };
     // Pick the year to broadcast: the live year if set, else the year being edited,
     // else the newest draft. The node ALWAYS carries that year's picks so viewers
@@ -2688,10 +2688,14 @@ window._MSU = {
     } else if (window.fbSet) {
       window.fbSet('live_draft/rookie', node);
     }
-    // Persist the full blob too (off the critical path) so picks survive a reload
-    // after the draft ends. The live UI no longer depends on this slow write.
+    // Persist the full blob too so picks survive a reload after the draft ends.
+    // CRITICAL ORDERING: await the big (~270KB) blob write BEFORE bumping _version.
+    // Otherwise _version can land first, a viewer fetches the still-old blob, and —
+    // since _version never bumps again — stays stuck on stale picks while the fast
+    // node shows fresh ones. Awaiting guarantees the blob is current when the
+    // version pointer that triggers viewers' refetch finally moves.
     if (window.fbSet) {
-      window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
+      await window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
       window.fbSet('league_data/_version', Date.now());
     }
   }
@@ -2878,18 +2882,11 @@ window._MSU = {
     LEAGUE_DATA.drafts[yr] = picks.filter(p => p.player || p.team);
 
     // Instantly broadcast the live board to every viewer on Save (same dedicated
-    // realtime node as the auction). Without this, a Save only propagated via the
-    // slow blob path, so viewers could sit on an old pick until they re-opened
-    // the tab. publishDraftLive also writes the blob below for permanence.
-    publishDraftLive();
-
-    // Push to Firebase immediately via REST (no SDK dependency).
-    // Write the FULL leagueData blob (what the reader prefers) so picks persist even
-    // without a GitHub token — not just the partial league_data/drafts path.
-    const _tsD = Date.now();
-    window.fbSet && window.fbSet('league_data/leagueData', JSON.stringify(LEAGUE_DATA));
-    window.fbSet && window.fbSet('league_data/drafts', LEAGUE_DATA.drafts);
-    window.fbSet && window.fbSet('league_data/_version', _tsD);
+    // realtime node as the auction) AND persist the blob in the correct order
+    // (blob written, THEN _version bumped) so viewers never refetch a stale blob.
+    // publishDraftLive is now awaited and owns the league_data writes — the old
+    // un-awaited fbSet trio here re-introduced the version-before-blob race.
+    await publishDraftLive();
     const ok = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: update ${yr} rookie draft`);
     btn.disabled = false; btn.textContent = '💾 Save';
     if (ok) { renderDraftEdit(yr); window.buildDraft && window.buildDraft(); }
@@ -3358,11 +3355,13 @@ window._MSU = {
             const fresh = typeof raw === 'string' ? JSON.parse(raw) : raw;
             Object.assign(LEAGUE_DATA, fresh);
             // The instant rookie node wins over the slower blob so the two
-            // channels never fight (blob can lag the live picks by a moment).
+            // channels never disagree (blob can lag the live picks by a moment).
+            // Applies whenever the node carries picks — the active flag only drives
+            // the banner, not which picks are shown.
             const rl = window.__rookieLive;
-            if (rl && rl.active && rl.year && Array.isArray(rl.picks) && rl.picks.length) {
-              LEAGUE_DATA.liveRookieDraft = { active: true, year: String(rl.year), ts: rl.ts || Date.now() };
+            if (rl && rl.year && Array.isArray(rl.picks) && rl.picks.length) {
               LEAGUE_DATA.drafts[String(rl.year)] = rl.picks;
+              if (rl.active) LEAGUE_DATA.liveRookieDraft = { active: true, year: String(rl.year), ts: rl.ts || Date.now() };
             }
             await window.mergeKeeperSubmissions();
             refreshCurrentPage();
