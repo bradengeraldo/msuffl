@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-03e';
+const APP_BUILD = '2026-07-03f';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -2126,6 +2126,11 @@ window._MSU = {
   const REPO_OWNER = 'Bradengeraldo';
   const REPO_NAME  = 'msuffl';
   const FILES      = ['leagueData.js'];   // data now lives in its own file — commits are small and never touch markup/code
+  // Last human-readable failure reason from saveData, so the Phase 5 overlay (which
+  // only gets a true/false result) can show the REAL cause instead of always
+  // guessing "check your token" — e.g. "no changes to save" has nothing to do with
+  // auth and telling someone to re-check their token for it is actively misleading.
+  let _lastSaveError = '';
 
   // ── Fetch file from GitHub (returns {content, sha}) ──────────────────────
   async function fetchFile(filename) {
@@ -2231,8 +2236,10 @@ window._MSU = {
   // newData: the updated JS object
   // message: git commit message
   async function saveData(varName, newData, message) {
+    _lastSaveError = '';
     if (!window.commMode.isUnlocked() || !window.commMode.getToken()) {
-      showToast('Not logged in as commissioner', 'error'); return false;
+      _lastSaveError = 'Not logged in as commissioner';
+      showToast(_lastSaveError, 'error'); return false;
     }
     showToast('Saving…');
     try {
@@ -2244,7 +2251,8 @@ window._MSU = {
           const seen = window.__fbVersionSeen || 0;
           if (remote && seen && remote > seen) {
             if (!confirm('⚠️ The live database changed since this page last synced — someone else (or another tab) may have saved.\n\nSaving now will overwrite their changes. Continue?')) {
-              showToast('Save cancelled', 'error'); return false;
+              _lastSaveError = 'Save cancelled';
+              showToast(_lastSaveError, 'error'); return false;
             }
           }
         }
@@ -2253,7 +2261,10 @@ window._MSU = {
       for (const file of FILES) {
         const { content, sha } = await fetchFile(file);
         const updated = replaceDataBlock(content, varName, newData);
-        if (updated === content) throw new Error('Data block unchanged — save aborted');
+        // Not a failure — nothing to commit. Thrown so it short-circuits the loop
+        // and is reported below, but tagged so callers/the overlay don't read it
+        // as "something is broken" (e.g. bad token) when nothing changed at all.
+        if (updated === content) { const e = new Error('No changes to save — edit something first'); e.noOp = true; throw e; }
         await commitFile(file, updated, sha, message || `Commissioner: update ${varName}`);
       }
       showToast('✓ Saved — site updates in ~30s');
@@ -2280,7 +2291,9 @@ window._MSU = {
       console.error('[commSave]', err);
       // Surface a helpful message for common failures
       let msg = err.message;
-      if (msg.includes('401') || msg.includes('Bad credentials')) {
+      if (err.noOp) {
+        // leave msg as-is: "No changes to save — edit something first"
+      } else if (msg.includes('401') || msg.includes('Bad credentials')) {
         msg = 'GitHub token invalid — log out and log back in with a fresh token';
       } else if (msg.includes('403') || msg.includes('not accessible')) {
         msg = 'GitHub token lacks write access — fine-grained token needs the msuffl repo selected with Contents: Read & write';
@@ -2289,13 +2302,14 @@ window._MSU = {
       } else if (msg.includes('422')) {
         msg = 'Commit conflict — reload the page and try again';
       }
+      _lastSaveError = msg;
       showToast(msg, 'error');
       return false;
     }
   }
 
   // ── Expose globally for Phase 3+ editors ──────────────────────────────────
-  window.commSave = { saveData, showToast, fetchFile, commitFile, replaceDataBlock };
+  window.commSave = { saveData, showToast, fetchFile, commitFile, replaceDataBlock, getLastError: () => _lastSaveError };
 })();
 // ===== END SAVE ENGINE =====
 
@@ -4647,7 +4661,12 @@ window._MSU = {
     window.commSave.saveData = async function(varName, newData, message) {
       showSaveOverlay('Saving to GitHub…');
       const result = await _origSave(varName, newData, message);
-      hideSaveOverlay(result);
+      // Show the ACTUAL reason on failure instead of always guessing "check your
+      // token" — that was actively wrong for cases like "no changes to save" or
+      // "save cancelled", which have nothing to do with auth and previously showed
+      // up alongside a correct, more specific toast that just contradicted this.
+      const reason = window.commSave.getLastError && window.commSave.getLastError();
+      hideSaveOverlay(result, reason);
       return result;
     };
     window.commSave._overlayPatched = true;
@@ -4665,10 +4684,10 @@ window._MSU = {
     _saveOverlayEl.className = 'comm-save-overlay visible saving';
     _saveOverlayEl.textContent = '⏳ ' + msg;
   }
-  function hideSaveOverlay(success) {
+  function hideSaveOverlay(success, reason) {
     if (!_saveOverlayEl) return;
     _saveOverlayEl.className = 'comm-save-overlay visible ' + (success ? 'success' : 'error');
-    _saveOverlayEl.textContent = success ? '✅ Saved to GitHub' : '❌ Save failed — check your token';
+    _saveOverlayEl.textContent = success ? '✅ Saved to GitHub' : '❌ ' + (reason || 'Save failed — check your token');
     setTimeout(() => {
       if (_saveOverlayEl) _saveOverlayEl.className = 'comm-save-overlay';
     }, 3000);
