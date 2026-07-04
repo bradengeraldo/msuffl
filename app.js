@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-03b';
+const APP_BUILD = '2026-07-03c';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -673,6 +673,12 @@ function buildDraft() {
       }
       const hasPlayer = pick.player && pick.player !== '' && !pick.player.startsWith('Round');
       const onClockCls = idx === onClockIdx ? ' rd-onclock' : '';
+      // The "via" field is stored inconsistently — some picks (mostly older/manually
+      // entered ones) already include a leading "via" in the value itself (e.g.
+      // "via Brad", or chained trades like "via Jeff via Kyle via Adam/Matt"), while
+      // others store just the name. Strip any leading "via" before re-adding exactly
+      // one, so a traded pick always shows a single "via X" instead of "via via X".
+      const viaText = pick.via ? String(pick.via).replace(/^\s*via\s+/i, '').trim() : '';
       html += `<div class="draft-pick${onClockCls}">
         <div>
           <div class="pick-number">${escHtml(pickNum)}</div>
@@ -681,7 +687,7 @@ function buildDraft() {
         <div class="pick-info">
           <div class="pick-player ${hasPlayer ? '' : 'empty'}">${hasPlayer ? escHtml(pick.player) : (idx === onClockIdx ? 'ON THE CLOCK' : 'TBD')}</div>
           <div class="pick-team">${escHtml(pick.team)}</div>
-          ${pick.via ? `<div class="pick-via">via ${escHtml(pick.via)}</div>` : ''}
+          ${viaText ? `<div class="pick-via">via ${escHtml(viaText)}</div>` : ''}
         </div>
       </div>`;
     });
