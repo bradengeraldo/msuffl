@@ -1713,15 +1713,22 @@
   .ld-pool-status.error   { color:#e74c3c; }
   .ld-top-available { margin-top:18px; }
   .ld-top-avail-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:10px; opacity:0.75; }
+  .ld-top-avail-hint { font-weight:400; text-transform:none; letter-spacing:0; opacity:.75; margin-left:4px; }
   .ld-top-pos-grid { display:flex; gap:8px; flex-wrap:wrap; }
   .ld-top-pos { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:110px; flex:1; }
-  .ld-top-pos-hdr { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+  .ld-top-pos-hdr { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; gap:4px; user-select:none; }
+  .ld-top-pos-hdr:hover, .ld-top-pos-hdr:focus-visible { filter:brightness(1.35); outline:none; }
   .ld-top-pos-hdr.pos-qb  { color:var(--qb);  border-color:var(--qb);  }
   .ld-top-pos-hdr.pos-rb  { color:var(--rb);  border-color:var(--rb);  }
   .ld-top-pos-hdr.pos-wr  { color:var(--wr);  border-color:var(--wr);  }
   .ld-top-pos-hdr.pos-te  { color:var(--te);  border-color:var(--te);  }
   .ld-top-pos-hdr.pos-dst { color:var(--dst); border-color:var(--dst); }
   .ld-top-pos-hdr.pos-k   { color:var(--k);   border-color:var(--k);   }
+  .ld-top-pos-count  { font-weight:400; opacity:.75; }
+  .ld-top-pos-expand { margin-left:auto; opacity:.6; font-size:11px; }
+  /* Each card lists every available player at the position, not just the top few —
+     the fixed max-height + scroll keeps the board layout from growing unbounded. */
+  .ld-top-pos-list { max-height:150px; overflow-y:auto; }
   .ld-top-player { display:flex; align-items:baseline; gap:5px; padding:3px 0; font-size:11px; border-bottom:1px solid rgba(255,255,255,0.04); }
   .ld-top-player:last-child { border-bottom:none; }
   .ld-top-rank   { color:var(--text-muted); font-size:10px; width:16px; flex-shrink:0; text-align:right; }
@@ -1731,6 +1738,41 @@
   /* RFA rights-team names are long; let them shrink/ellipsis so the player
      name (flex:1) keeps priority instead of being truncated. */
   .ld-top-pteam.rfa { color:var(--yellow); flex:0 1 auto; min-width:0; max-width:42%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Full-list modal — opened by clicking a position header in Top Available */
+  .ld-pos-modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .ld-pos-modal-overlay.open { opacity: 1; pointer-events: all; }
+  .ld-pos-modal {
+    position: relative;
+    background: var(--surface2);
+    border: 1px solid var(--border-bright);
+    border-radius: 14px;
+    padding: 1.5rem;
+    width: 100%; max-width: 420px; max-height: 78vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  }
+  .ld-pos-modal h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem; letter-spacing: 0.06em;
+    color: var(--text); margin: 0 0 0.9rem; padding-right: 1.5rem;
+    flex: 0 0 auto;
+  }
+  .ld-pos-modal-list { overflow-y: auto; flex: 1 1 auto; }
+  .ld-pos-modal-list .ld-top-player { font-size: 13px; padding: 6px 0; }
+  .ld-pos-modal-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 1rem 0; }
+  .ld-pos-modal-close {
+    position: absolute; top: 0.9rem; right: 1rem;
+    background: none; border: none;
+    color: var(--muted); font-size: 1.1rem; cursor: pointer;
+    transition: color 0.15s;
+  }
+  .ld-pos-modal-close:hover { color: var(--text); }
 
   /* Live banner (auction) */
   @keyframes rdpulse { 0%,100%{opacity:1} 50%{opacity:.25} }

@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-03a';
+const APP_BUILD = '2026-07-03b';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -3335,9 +3335,42 @@ window._MSU = {
               </div>
             </div>
             <div id="ld-top-available" class="ld-top-available"></div>
+            <div class="ld-pos-modal-overlay" id="ld-pos-modal-overlay">
+              <div class="ld-pos-modal">
+                <button class="ld-pos-modal-close" id="ld-pos-modal-close">✕</button>
+                <h3 id="ld-pos-modal-title">Position</h3>
+                <div class="ld-pos-modal-list" id="ld-pos-modal-list"></div>
+              </div>
+            </div>
           `}
         </div>`;
       pagesParent.appendChild(page);
+    }
+
+    // Wire the "click a position to see the full list" modal once. The mini
+    // per-position cards inside #ld-top-available are also independently
+    // scrollable (see renderTopAvailable) so this modal is for a bigger, easier
+    // to read view — not the only way to see players past the first few.
+    const topAvailEl = document.getElementById('ld-top-available');
+    if (topAvailEl && !topAvailEl._posModalWired) {
+      topAvailEl._posModalWired = true;
+      topAvailEl.addEventListener('click', e => {
+        const hdr = e.target.closest('.ld-top-pos-hdr');
+        if (hdr && hdr.dataset.pos) openPosModal(hdr.dataset.pos);
+      });
+      topAvailEl.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const hdr = e.target.closest('.ld-top-pos-hdr');
+        if (hdr && hdr.dataset.pos) { e.preventDefault(); openPosModal(hdr.dataset.pos); }
+      });
+    }
+    const posModalOverlay = document.getElementById('ld-pos-modal-overlay');
+    if (posModalOverlay && !posModalOverlay._wired) {
+      posModalOverlay._wired = true;
+      posModalOverlay.addEventListener('click', e => { if (e.target === posModalOverlay) closePosModal(); });
+      const closeBtn = document.getElementById('ld-pos-modal-close');
+      if (closeBtn) closeBtn.addEventListener('click', closePosModal);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closePosModal(); });
     }
 
     if (FB_CONFIGURED) {
@@ -4024,6 +4057,19 @@ window._MSU = {
       .join('');
   }
 
+  // Shared row markup for both the mini per-position cards and the full-list modal.
+  function posPlayerRowHtml(p) {
+    return `<div class="ld-top-player">
+      <span class="ld-top-rank">${p.rank < 9999 ? p.rank : '—'}</span>
+      <span class="ld-top-pname">${escHtml(p.name)}${p.rfa ? '<span class="ld-rfa-badge">RFA</span>' : ''}</span>
+      <span class="ld-top-pteam${p.rfa ? ' rfa' : ''}"${p.rfa ? ` title="RFA rights: ${escHtml(p.rightsTeam || '')}"` : ''}>${p.rfa ? escHtml(p.rightsTeam || 'RFA') : (p.nflTeam ? escHtml(p.nflTeam) : 'TBD')}</span>
+    </div>`;
+  }
+
+  const POS_FULL_LABELS = { QB:'Quarterbacks', RB:'Running Backs', WR:'Wide Receivers', TE:'Tight Ends', DST:'Defense / Special Teams', K:'Kickers' };
+  let _ldAvailByPos = {};   // last-rendered available players, grouped by position — reused by the modal
+  let _openPosModal = null; // position currently shown in the full-list modal, or null
+
   function renderTopAvailable() {
     const container = document.getElementById('ld-top-available');
     if (!container) return;
@@ -4036,22 +4082,45 @@ window._MSU = {
       const key = p.pos.replace(/\d+$/, '').toUpperCase().replace('D/ST', 'DST');
       if (byPos[key]) byPos[key].push(p);
     }
-    container.innerHTML = '<div class="ld-top-avail-hdr">Top Available by Position</div>' +
+    _ldAvailByPos = byPos;
+    container.innerHTML = '<div class="ld-top-avail-hdr">Top Available by Position <span class="ld-top-avail-hint">— scroll a column, or click its name for the full list</span></div>' +
       '<div class="ld-top-pos-grid">' +
       positions.map(pos => {
-        const players = byPos[pos].slice(0, 5);
+        const players = byPos[pos];
         if (!players.length) return '';
         const color = posColors[pos] || 'var(--green)';
         return `<div class="ld-top-pos">
-          <div class="ld-top-pos-hdr" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${color};margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid ${color}">${pos}</div>
-          ${players.map(p => `<div class="ld-top-player">
-            <span class="ld-top-rank">${p.rank < 9999 ? p.rank : '—'}</span>
-            <span class="ld-top-pname">${escHtml(p.name)}${p.rfa ? '<span class="ld-rfa-badge">RFA</span>' : ''}</span>
-            <span class="ld-top-pteam${p.rfa ? ' rfa' : ''}"${p.rfa ? ` title="RFA rights: ${escHtml(p.rightsTeam || '')}"` : ''}>${p.rfa ? escHtml(p.rightsTeam || 'RFA') : (p.nflTeam ? escHtml(p.nflTeam) : 'TBD')}</span>
-          </div>`).join('')}
+          <div class="ld-top-pos-hdr" data-pos="${pos}" tabindex="0" role="button" title="Click to see the full ${pos} list" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${color};margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid ${color}">${pos} <span class="ld-top-pos-count">(${players.length})</span><span class="ld-top-pos-expand">⤢</span></div>
+          <div class="ld-top-pos-list">${players.map(posPlayerRowHtml).join('')}</div>
         </div>`;
       }).join('') +
       '</div>';
+    // If a manager currently has the full-list modal open, keep it live too —
+    // otherwise a player drafted by someone else would still show as available.
+    if (_openPosModal) renderPosModalContent(_openPosModal);
+  }
+
+  function renderPosModalContent(pos) {
+    const title = document.getElementById('ld-pos-modal-title');
+    const list  = document.getElementById('ld-pos-modal-list');
+    const players = _ldAvailByPos[pos] || [];
+    if (title) title.textContent = `${POS_FULL_LABELS[pos] || pos} — ${players.length} available`;
+    if (list) list.innerHTML = players.length
+      ? players.map(posPlayerRowHtml).join('')
+      : '<div class="ld-pos-modal-empty">No players left at this position.</div>';
+  }
+
+  function openPosModal(pos) {
+    _openPosModal = pos;
+    renderPosModalContent(pos);
+    const overlay = document.getElementById('ld-pos-modal-overlay');
+    if (overlay) overlay.classList.add('open');
+  }
+
+  function closePosModal() {
+    _openPosModal = null;
+    const overlay = document.getElementById('ld-pos-modal-overlay');
+    if (overlay) overlay.classList.remove('open');
   }
 
   // Look up a player's position from the draft pool (used to auto-detect position).
