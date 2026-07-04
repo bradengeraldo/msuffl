@@ -3137,11 +3137,15 @@ window._MSU = {
   // REST-based AUTHENTICATED write — exposed globally so Phase 3 / roster editor can call it.
   // Database rules require auth for league_data / live_draft / backups, so this attaches
   // the commissioner's ID token. Writes fail loudly (toast in console) if not signed in.
+  // Returns true only on a confirmed successful write — callers that need to know
+  // whether a write actually landed (e.g. resetDatabase) must check this instead of
+  // assuming success, since this function used to resolve silently on every failure
+  // path (file://, no auth, network error, HTTP error), making failures invisible.
   window.fbSet = async function fbSet(path, data) {
-    if (!FB_CONFIGURED || !FB_DB_URL) return;
+    if (!FB_CONFIGURED || !FB_DB_URL) return false;
     if (location.protocol === 'file:') {
       console.warn('Firebase writes do not work from file:// — use the deployed site or a local web server.');
-      return;
+      return false;
     }
     try {
       const tok = await window.fbAuthToken();
@@ -3160,9 +3164,11 @@ window._MSU = {
           window.__fbDenyAlerted = true;
           alert('⚠️ The live database REJECTED a commissioner write.\n\nYour edits show on screen but will NOT survive a reload.\n\nCause: you are not signed in to Firebase' + (tok ? ' with a valid account' : '') + '.\n\nFix:\n1. Firebase console → Authentication → Sign-in method: enable Email/Password.\n2. Authentication → Users: add commissioner@msuffl.com with your commissioner password (or reset its password to match).\n3. On the site: click the 🔓 lock to log out, then log back in.');
         }
-      } else if (!r.ok) console.warn(`Firebase write failed (${r.status}):`, path);
-      else console.log(`Firebase write OK:`, path);
-    } catch(e) { console.warn('Firebase REST write failed:', e); }
+        return false;
+      } else if (!r.ok) { console.warn(`Firebase write failed (${r.status}):`, path); return false; }
+      console.log(`Firebase write OK:`, path);
+      return true;
+    } catch(e) { console.warn('Firebase REST write failed:', e); return false; }
   }
 
   // PUBLIC (unauthenticated) write — only for paths the database rules deliberately

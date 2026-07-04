@@ -211,11 +211,23 @@
   async function resetDatabase() {
     if (!confirm('⚠️ RESET LIVE DATABASE?\n\nThis erases ALL live data — keeper submissions, rookie draft picks, roster edits, and the auction board — and reloads the site using the data in the deployed file.\n\nThis cannot be undone. Continue?')) return;
     if (!confirm('Are you absolutely sure? Every team\'s in-progress data in the live database will be permanently erased.')) return;
+    if (!window.fbSet) { alert('Reset failed: the live-write engine is not loaded on this page.'); return; }
+    if (location.protocol === 'file:') {
+      alert('Reset failed: this page is open as a local file (file://), so writes to the live database are disabled and silently do nothing.\n\nOpen the real msuffl.com site (not a file on disk) and run this from there.');
+      return;
+    }
     try {
-      if (window.fbSet) {
-        await window.fbSet('league_data', null);   // PUT null deletes the node
-        await window.fbSet('live_draft/picks', null);
-        await window.fbSet('keeper_submissions', null);
+      // Clear the whole live_draft node (not just live_draft/picks) — it also holds
+      // live_draft/rookie, the in-progress rookie-draft node, which otherwise survives
+      // a reset and gets merged back over freshly-reset draft picks on the next load.
+      const results = await Promise.all([
+        window.fbSet('league_data', null),   // PUT null deletes the node
+        window.fbSet('live_draft', null),
+        window.fbSet('keeper_submissions', null)
+      ]);
+      if (!results.every(Boolean)) {
+        alert('⚠️ Reset did NOT fully complete — one or more live-database writes were rejected (see the console, or the "LIVE WRITE DENIED" toast). The site was NOT reloaded so you can fix sign-in and try again.\n\nMost common cause: not signed in as commissioner. Click the 🔓 icon to log out, then log back in with your password, then run this again.');
+        return;
       }
       alert('✓ Live database cleared. Reloading with the deployed data…');
       location.reload();
