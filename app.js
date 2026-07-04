@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-06-14h';
+const APP_BUILD = '2026-07-03a';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
