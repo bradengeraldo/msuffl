@@ -134,11 +134,16 @@
       `\n\nApply now?`;
     if (!confirm(msg)) return;
     Object.keys(LEAGUE_DATA.rosters).forEach(recomputeBudget);
-    if (window.commSave) await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: promote ${added.length} ${year} rookies to rosters at $1`);
+    let saved = false;
+    if (window.commSave) saved = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: promote ${added.length} ${year} rookies to rosters at $1`);
     pushToFirebase();
     if (typeof buildKeepers === 'function') { try { buildKeepers(); } catch(e){} }
     renderPortal();
-    alert(`✓ Added ${added.length} rookie(s) at $1. They now appear as keeper options for their teams.`);
+    if (saved) {
+      alert(`✓ Added ${added.length} rookie(s) at $1. They now appear as keeper options for their teams.`);
+    } else {
+      alert(`⚠️ Rookies were added in THIS browser and the page has been refreshed — but the save did NOT confirm, so it has not been published to the league.\n\nThis usually means you are not logged in as commissioner with a valid GitHub token. Click the 🔒 icon to log in, then run "Promote rookie picks to rosters" again so it persists.\n\nDo NOT reload this page until it saves, or the change will be lost.`);
+    }
   }
 
   // BRIDGE 2 — reduce each roster to ONLY the team's locked keepers, so the auction's
@@ -197,12 +202,17 @@
     LEAGUE_DATA.rosters = JSON.parse(JSON.stringify(LEAGUE_DATA.rostersFull));
     delete LEAGUE_DATA.rostersFull;
     Object.keys(LEAGUE_DATA.rosters).forEach(recomputeBudget);
-    if (window.commSave) await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, 'Commissioner: restore full rosters (undo release)');
+    let saved = false;
+    if (window.commSave) saved = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, 'Commissioner: restore full rosters (undo release)');
     pushToFirebase();
     if (typeof buildKeepers === 'function') { try { buildKeepers(); } catch(e){} }
     if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e){} }
     renderPortal();
-    alert('✓ Full rosters restored.');
+    if (saved) {
+      alert('✓ Full rosters restored.');
+    } else {
+      alert('⚠️ Full rosters were restored in THIS browser and the page has been refreshed — but the save did NOT confirm, so it has not been published to the league.\n\nThis usually means you are not logged in as commissioner with a valid GitHub token. Click the 🔒 icon to log in, then run "Restore full rosters" again so it persists.\n\nDo NOT reload this page until it saves, or the change will be lost.');
+    }
   }
 
   // Wipe ALL live data from Firebase so the site falls back to the data baked into the
@@ -509,20 +519,23 @@
         delete LEAGUE_DATA.keeperLocks[team];
         // Delete the team's submission node too, otherwise the live merge re-locks them.
         if (window.fbSet) await window.fbSet(`keeper_submissions/${window.fbTeamKey(team)}`, null);
-        const ok = window.commSave && await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: reopen keepers for ${team}`);
-        if (ok === false) pushToFirebase(); else pushToFirebase();
+        const saved = window.commSave && await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: reopen keepers for ${team}`);
+        pushToFirebase();
         renderPortal();
+        if (!saved) alert(`⚠️ ${team} was reopened in THIS browser, but the save did NOT confirm — it has not been published to the league.\n\nThis usually means you are not logged in as commissioner with a valid GitHub token. Log in and reopen ${team} again so it persists.`);
       }));
       const wt = root.querySelector('#kp-window-toggle');
       if (wt) wt.addEventListener('click', async () => {
         const closing = !LEAGUE_DATA.keeperWindowLocked;
         if (!confirm(closing ? 'Lock ALL keepers and close the submission window? Teams will no longer be able to submit.' : 'Reopen the submission window so teams can submit again?')) return;
         LEAGUE_DATA.keeperWindowLocked = closing;
-        if (window.commSave) await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: ${closing ? 'close' : 'reopen'} keeper window`);
+        let saved = false;
+        if (window.commSave) saved = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: ${closing ? 'close' : 'reopen'} keeper window`);
         pushToFirebase();
         renderPortal();
         // Reveal/hide keepers on the 2026 Keepers tab to match the new window state.
         if (typeof buildKeepers === 'function') { try { buildKeepers(); } catch(e){} }
+        if (!saved) alert(`⚠️ The submission window was ${closing ? 'closed' : 'reopened'} in THIS browser, but the save did NOT confirm — it has not been published to the league.\n\nThis usually means you are not logged in as commissioner with a valid GitHub token. Log in and try again so it persists.`);
       });
       const pr = root.querySelector('#kp-promote-rookies');
       if (pr) pr.addEventListener('click', () => promoteRookies());

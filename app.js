@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-03c';
+const APP_BUILD = '2026-07-03e';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -2259,13 +2259,21 @@ window._MSU = {
       showToast('✓ Saved — site updates in ~30s');
       // Mirror LEAGUE_DATA to Firebase (authenticated) so all live viewers see fresh
       // data immediately, snapshot it for rollback, and bump the version counter.
+      // Awaited (unlike before) so a failed mirror is surfaced instead of silently
+      // leaving every other live viewer on stale data until the ~30s GitHub rebuild
+      // completes and they happen to reload — the GitHub commit above still counts
+      // as the save succeeding (it's the durable copy), this only warns about the
+      // separate instant-update path.
       if (varName === 'LEAGUE_DATA' && window.fbSet) {
         const ts = Date.now();
-        window.fbSet('league_data/leagueData', JSON.stringify(newData))
-          .then(() => window.fbSet('league_data/_version', ts))
-          .then(() => window.fbSnapshot && window.fbSnapshot(newData, message))
-          .catch(e => console.warn('[commSave] Firebase mirror failed:', e));
-        window.__fbVersionSeen = ts;
+        const mirrored = await window.fbSet('league_data/leagueData', JSON.stringify(newData));
+        if (mirrored) {
+          await window.fbSet('league_data/_version', ts);
+          window.__fbVersionSeen = ts;
+          if (window.fbSnapshot) window.fbSnapshot(newData, message);
+        } else {
+          showToast('⚠ Saved to GitHub, but the instant live-update push failed — other viewers won\'t see this until the site rebuilds (~30s) and they reload. Check you\'re still signed in as commissioner.', 'error');
+        }
       }
       return true;
     } catch (err) {
