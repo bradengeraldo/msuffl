@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-03f';
+const APP_BUILD = '2026-07-03g';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -3119,7 +3119,15 @@ window._MSU = {
     });
     const ok = await window.commSave.saveData('WRITEUP_SECTIONS', WRITEUP_SECTIONS, 'Commissioner: update write-ups');
     btn.disabled = false; btn.textContent = '💾 Save All';
-    if (ok) { renderWriteupsEdit(); window.buildWriteUps && window.buildWriteUps(); }
+    if (ok) {
+      renderWriteupsEdit(); window.buildWriteUps && window.buildWriteUps();
+    } else {
+      // Previously this just silently reset the button on failure, with only an
+      // easy-to-miss toast as feedback — which is exactly what "my write-ups
+      // aren't posting" looks like from the outside. Make it unmissable.
+      const reason = window.commSave.getLastError ? window.commSave.getLastError() : '';
+      alert(`⚠️ Write-ups were NOT saved — the save did not confirm.${reason ? `\n\nReason: ${reason}` : ''}\n\nYour edits are still here in the editor (not lost), but they have not been published. Log in again with a fresh GitHub token and click "Save All" again.`);
+    }
   }
 
   /* ── Expose buildTrades/buildDraft so save handlers can refresh view ── */
