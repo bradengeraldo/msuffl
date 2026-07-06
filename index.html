@@ -222,9 +222,22 @@
 </main>
 
 <!-- Build stamp — confirm which code a browser is actually running. Bump on each deploy. -->
-<div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-07-03g · app <span id="app-build">NOT-LOADED</span></div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-07-06a · app <span id="app-build">NOT-LOADED</span></div>
 
-<script defer src="leagueData.js?d=2026-06-15a"></script>
+<script>
+  // leagueData.js is rewritten by the commissioner save engine at unpredictable
+  // times — every roster/keeper/trade/rookie-draft/write-up save recommits it —
+  // unlike app.js/keepers.js/styles.css, which only change on a manual deploy and
+  // get an intentional hand-bumped ?v=. A hand-bumped cache-buster on THIS file
+  // would need editing on every single commissioner save to stay accurate, which
+  // isn't realistic, so it silently went stale (last bumped 2026-06-15) while
+  // LEAGUE_DATA changes kept landing on GitHub — masked everywhere else because
+  // Firebase's live sync overwrites LEAGUE_DATA in memory after load, but
+  // WRITEUP_SECTIONS has no such live sync, so a write-up could save successfully
+  // and still never appear for anyone whose browser had a cached leagueData.js.
+  // Date.now() forces a genuinely fresh fetch on every page load instead.
+  document.write('<script src="leagueData.js?t=' + Date.now() + '"></' + 'script>');
+</script>
 <script defer src="app.js?v=2026-07-03g"></script>
 
 <!-- ===== COMMISSIONER MODE ===== -->
