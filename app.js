@@ -655,12 +655,15 @@ function buildKeepers() {
 
   // ── Revealed state: full keepers for every team ──────────────────────────
   grid.innerHTML = teams.map(team => {
-    // Stored pick rows are dropped and re-derived from the draft board, so a
-    // hand-entered row and a live pick can never both be counted.
-    const stored  = (LEAGUE_DATA.keepers2026[team] || []).filter(k => !rdIsPickRow(k.player));
-    const picks   = getRookiePickSlots(team).map(p => ({ player: p.player, value: '1', isPickSlot: true }));
-    const keepers = stored.concat(picks);
     const done = !!locks[team];
+    // Picks are a keeper choice like any other player, so a submitted team's
+    // list is authoritative — a pick they passed on stays off. Teams that
+    // haven't submitted get picks derived from the draft board as a projection.
+    const stored  = LEAGUE_DATA.keepers2026[team] || [];
+    const keepers = done
+      ? stored.map(k => ({ ...k, isPickSlot: rdIsPickRow(k.player) }))
+      : stored.filter(k => !rdIsPickRow(k.player))
+              .concat(getRookiePickSlots(team).map(p => ({ player: p.player, value: '1', isPickSlot: true })));
 
     // Total from the rows actually shown, so the badge always matches the list.
     let total = 0;
