@@ -272,6 +272,10 @@
       row.classList.toggle('kept', cb.checked);
       if (cb.checked && row.dataset.tbd !== '1') { count++; value += parseInt(row.dataset.val) || 0; }
     });
+    // Rookie picks have no checkbox — they're mandatory $1 slots, always counted.
+    document.querySelectorAll('#kp-picks .kp-pick').forEach(row => {
+      count++; value += parseInt(row.dataset.val) || 0;
+    });
     const cntEl = document.getElementById('kp-count'), valEl = document.getElementById('kp-value');
     const overC = count > MAX_PLAYERS, overV = value > MAX_VALUE;
     if (cntEl){ cntEl.textContent = count + ' / ' + MAX_PLAYERS; cntEl.className = 'num ' + (overC?'over':'ok'); }
@@ -300,6 +304,11 @@
       const tbd = row.dataset.tbd === '1';
       picks.push({ player: row.dataset.player, value: tbd ? 'TBD' : row.dataset.val });
       if (!tbd) { count++; value += parseInt(row.dataset.val) || 0; }
+    });
+    // Locked $1 rookie-pick slots are always part of the submission.
+    document.querySelectorAll('#kp-picks .kp-pick').forEach(row => {
+      picks.push({ player: row.dataset.player, value: row.dataset.val });
+      count++; value += parseInt(row.dataset.val) || 0;
     });
     if (count > MAX_PLAYERS || value > MAX_VALUE || picks.length === 0) { recalc(); btn.textContent = '🔒 Submit & Lock Keepers'; return; }
 
@@ -355,6 +364,18 @@
         <span class="kp-val">$${val}</span>
       </label>`;
     }).join('');
+    // Unused rookie picks are locked $1 slots — a pick you own WILL become a $1
+    // rookie, so it can't be released and has to count against 16 players/$200.
+    // Derived from the draft board (window.getRookiePickSlots) so pick trades
+    // are reflected without anyone editing keeper rows by hand.
+    const pickSlots = (window.getRookiePickSlots ? window.getRookiePickSlots(team) : []);
+    const pickHtml = pickSlots.length ? `
+        <div class="kp-intro" style="margin:1rem 0 .4rem"><strong>Rookie draft picks</strong> — each unused pick costs $1 and takes a roster spot. These are locked in; you can't release a pick here.</div>
+        <div class="kp-roster" id="kp-picks">${pickSlots.map(p => `<div class="kp-row kept kp-pick" style="cursor:default" data-tbd="0" data-val="1" data-player="${esc(p.player)}">
+          <span class="kp-pos PICK">PICK</span>
+          <span class="kp-name">${esc(p.player)}<span class="sub">rookie pick</span></span>
+          <span class="kp-val">$1</span>
+        </div>`).join('')}</div>` : '';
     const rfaHtml = rfas.length ? `
         <div class="kp-intro" style="margin:1rem 0 .4rem"><strong>Restricted Free Agents</strong> — these go into the auction pool. Your team holds matching rights; you don't spend a keeper slot on them.</div>
         <div class="kp-roster">${rfas.map(p => `<div class="kp-row" style="cursor:default;opacity:.85">
@@ -370,6 +391,7 @@
           <div class="kp-stat"><span class="lbl">Keeper value</span><span class="num ok" id="kp-value">$0 / $${MAX_VALUE}</span></div>
         </div>
         <div class="kp-roster" id="kp-roster">${rowsHtml || '<div class="kp-intro">No keeper-eligible players found for this team.</div>'}</div>
+        ${pickHtml}
         ${rfaHtml}
         <div class="kp-form-err kp-err" id="kp-form-err"></div>
         <div class="kp-submitbar">
@@ -379,12 +401,23 @@
       </div>`;
   }
 
+  // A team's submitted keepers with any stored pick rows replaced by the live
+  // ones derived from the draft board — so a pick traded AFTER submission shows
+  // up correctly instead of freezing at whatever was stored that day.
+  function keepersWithPicks(team) {
+    const stored = ((LEAGUE_DATA.keepers2026 && LEAGUE_DATA.keepers2026[team]) || [])
+      .filter(k => !(window.rdIsPickRow && window.rdIsPickRow(k.player)));
+    const slots = (window.getRookiePickSlots ? window.getRookiePickSlots(team) : [])
+      .map(p => ({ player: p.player, value: '1', isPickSlot: true }));
+    return stored.concat(slots);
+  }
+
   function submittedSummary(team) {
-    const picks = (LEAGUE_DATA.keepers2026 && LEAGUE_DATA.keepers2026[team]) || [];
+    const picks = keepersWithPicks(team);
     let count = 0, value = 0;
     picks.forEach(k => { if (String(k.value) !== 'TBD') { count++; value += parseInt(k.value) || 0; } });
-    const items = picks.map(k => `<div class="kp-row kept" style="cursor:default">
-        <span class="kp-name">${esc(k.player)}</span>
+    const items = picks.map(k => `<div class="kp-row kept${k.isPickSlot ? ' kp-pick' : ''}" style="cursor:default">
+        <span class="kp-name">${esc(k.player)}${k.isPickSlot ? '<span class="sub">rookie pick</span>' : ''}</span>
         <span class="kp-val ${String(k.value)==='TBD'?'tbd':''}">${String(k.value)==='TBD'?'TBD ($0)':'$'+esc(k.value)}</span>
       </div>`).join('');
     return `<div class="kp-card">
@@ -399,7 +432,7 @@
     const windowLocked = !!LEAGUE_DATA.keeperWindowLocked;
     const cards = teams.map(team => {
       const locked = !!(LEAGUE_DATA.keeperLocks && LEAGUE_DATA.keeperLocks[team]);
-      const picks = (LEAGUE_DATA.keepers2026 && LEAGUE_DATA.keepers2026[team]) || [];
+      const picks = keepersWithPicks(team);
       let count = 0, value = 0;
       picks.forEach(k => { if (String(k.value) !== 'TBD') { count++; value += parseInt(k.value) || 0; } });
       return `<div class="kp-dash-team">

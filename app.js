@@ -313,13 +313,69 @@ function _updateRosterAnalysisPanel() {
 }
 
 // ===================== ROSTER PAGE =====================
+/* ── Rookie draft picks as $1 keeper slots ─────────────────────────────────
+   An unused rookie pick is a real commitment: it becomes a $1 rookie the
+   moment it's made (see promoteRookies in keepers.js). So before the rookie
+   draft runs, every pick a team owns shows as a $1 placeholder that occupies a
+   roster slot and counts against the $200 budget.
+
+   These are DERIVED from the newest draft year rather than stored, so they
+   follow pick trades automatically and disappear the instant a pick is used —
+   no hand-entered rows to keep in sync. Anything already stored as a pick row
+   in keepers2026 is filtered out on render so picks never double-count. */
+const RD_PICK_RE = /^\s*round\s*\d+\s*,\s*pick\s*\d+\s*(\(\s*\d+\s*\))?\s*$/i;
+
+function rdIsPickRow(name) { return RD_PICK_RE.test(String(name == null ? '' : name).trim()); }
+
+// Pick owners are stored as full team names today, but older rows use manager
+// names ("Adam/Matt"). Resolve both so a stale label doesn't silently drop a pick.
+function rdResolveTeam(label) {
+  const teams = LEAGUE_DATA.teams || [];
+  if (teams.includes(label)) return label;
+  const managers = LEAGUE_DATA.managers || {};
+  if (managers[label]) return managers[label];
+  const toks = s => new Set(String(s).toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 3));
+  const want = toks(label);
+  let best = null;
+  for (const [mgr, tm] of Object.entries(managers)) {
+    const cand = new Set([...toks(mgr), ...toks(tm)]);
+    if ([...want].some(t => cand.has(t))) { if (best && best !== tm) return null; best = tm; }
+  }
+  return best;
+}
+
+// Roster-shaped rows for every pick `team` still owns and hasn't used yet.
+function getRookiePickSlots(team) {
+  const drafts = LEAGUE_DATA.drafts || {};
+  const years  = Object.keys(drafts).filter(y => /^\d{4}$/.test(y)).sort();
+  const year   = years[years.length - 1];
+  if (!year) return [];
+  return (drafts[year] || [])
+    .filter(p => rdIsPickRow(p.player) && rdResolveTeam(p.team) === team)
+    .map(p => ({
+      player: String(p.player).trim(),
+      pos: 'PICK', rookieDeal: 'Pick', val2025: '0', val2026: '1', isPickSlot: true
+    }));
+}
+
+// A team's roster plus its unused picks — the real 2026 commitment.
+function rosterWithPicks(team) {
+  const roster = (LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[team]) || [];
+  return roster.concat(getRookiePickSlots(team));
+}
+
+window.rdIsPickRow       = rdIsPickRow;
+window.getRookiePickSlots = getRookiePickSlots;
+window.rosterWithPicks   = rosterWithPicks;
+
 function buildRosters() {
   const grid = document.getElementById('rosters-teams-grid');
   const teams = Object.keys(LEAGUE_DATA.rosters).sort();
   grid.innerHTML = teams.map(team => {
     const mgr = TEAM_TO_MGR[team] || team;
     const budget = LEAGUE_DATA.budgets[team];
-    const roster = LEAGUE_DATA.rosters[team] || [];
+    const roster = rosterWithPicks(team);
+    const nPicks = getRookiePickSlots(team).length;
     const rem = budget ? parseInt(budget.remaining) : 0;
     return `<div class="team-card" data-team="${escHtml(team)}">
       <div class="team-name">${escHtml(team)}</div>
@@ -327,7 +383,7 @@ function buildRosters() {
       <div class="team-stats-row">
         <div class="team-mini-stat">
           <span class="val">${roster.length}</span>
-          <span class="lbl">Players</span>
+          <span class="lbl">Players${nPicks ? ` (${nPicks} pick${nPicks === 1 ? '' : 's'})` : ''}</span>
         </div>
         ${budget ? `
         <div class="team-mini-stat">
@@ -349,15 +405,19 @@ function showTeamDetail(team) {
   document.getElementById('rosters-list-view').style.display = 'none';
   document.getElementById('team-detail-view').style.display = '';
 
-  const roster = LEAGUE_DATA.rosters[team] || [];
+  const roster = rosterWithPicks(team);
   _rosterTeam = team;
-  _rosterEntries = roster;
+  // Roster analysis values real players only — a pick slot has no ADP or position
+  // to grade, so feeding it in would skew every win-now/rebuild number.
+  _rosterEntries = LEAGUE_DATA.rosters[team] || [];
   const mgr = TEAM_TO_MGR[team] || team;
   const budget = LEAGUE_DATA.budgets[team];
 
-  // Sort by position order
+  // Sort by position order — unused picks sort last, in draft order.
   const posOrder = ['QB','RB','WR','TE','K','D/ST','DST'];
   const sorted = [...roster].sort((a, b) => {
+    if (!!a.isPickSlot !== !!b.isPickSlot) return a.isPickSlot ? 1 : -1;
+    if (a.isPickSlot) return 0;
     const ai = posOrder.findIndex(p => a.pos && a.pos.includes(p));
     const bi = posOrder.findIndex(p => b.pos && b.pos.includes(p));
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
@@ -388,6 +448,15 @@ function showTeamDetail(team) {
     </div>` : '';
 
   const rows = sorted.map(p => {
+    if (p.isPickSlot) {
+      return `<tr class="rd-pick-slot-row">
+        <td class="toggle-cell"></td>
+        <td><span class="pos-badge PICK">PICK</span></td>
+        <td class="player-name">${escHtml(p.player)}<span class="rd-pick-tag">rookie pick</span></td>
+        <td class="val-mono">—</td>
+        <td class="val-mono highlight">1</td>
+      </tr>`;
+    }
     const isRookie = p.rookieDeal && p.rookieDeal !== 'N' && p.rookieDeal !== 'nan';
     const rookieTag = isRookie ? `<span class="rookie-tag">R</span>` : '';
     const posStr = formatPos(p.pos);
@@ -586,16 +655,21 @@ function buildKeepers() {
 
   // ── Revealed state: full keepers for every team ──────────────────────────
   grid.innerHTML = teams.map(team => {
-    const keepers = LEAGUE_DATA.keepers2026[team] || [];
-    const budget = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
-    const rem = budget ? parseInt(budget.remaining) : 0;
-    const isOver = rem < 0;
-    const total = budget ? budget.totalKept : '—';
+    // Stored pick rows are dropped and re-derived from the draft board, so a
+    // hand-entered row and a live pick can never both be counted.
+    const stored  = (LEAGUE_DATA.keepers2026[team] || []).filter(k => !rdIsPickRow(k.player));
+    const picks   = getRookiePickSlots(team).map(p => ({ player: p.player, value: '1', isPickSlot: true }));
+    const keepers = stored.concat(picks);
     const done = !!locks[team];
 
+    // Total from the rows actually shown, so the badge always matches the list.
+    let total = 0;
+    keepers.forEach(k => { if (String(k.value) !== 'TBD') total += parseInt(k.value) || 0; });
+    const isOver = total > 200;
+
     const playerItems = keepers.map(k =>
-      `<div class="keeper-player-item">
-        <span class="keeper-player-name">${escHtml(k.player)}</span>
+      `<div class="keeper-player-item${k.isPickSlot ? ' pick-slot' : ''}">
+        <span class="keeper-player-name">${escHtml(k.player)}${k.isPickSlot ? '<span class="rd-pick-tag">rookie pick</span>' : ''}</span>
         <span class="keeper-player-val">$${escHtml(k.value)}</span>
       </div>`
     ).join('');
@@ -3356,6 +3430,7 @@ window._MSU = {
                 <button class="comm-btn-save" id="ld-submit-pick">✅ Submit Pick</button>
                 <button class="comm-btn-add" id="ld-finalize-draft" style="background:#1a6b3a">📋 Finalize Draft</button>
                 <button class="comm-btn-add" id="ld-reset-draft" style="background:#8b0000">🗑 Reset Draft</button>
+                <button class="comm-btn-add" id="ld-live-toggle" style="background:#8b0000">🔴 Start Live Draft</button>
               </div>
             </div>
             <div class="ld-layout">
@@ -3449,6 +3524,7 @@ window._MSU = {
       window._ldBaseBudgets  = JSON.parse(JSON.stringify(LEAGUE_DATA.budgets  || {}));
     }
     subscribeToPicksFeed();
+    subscribeToLiveFlag();
     fetchPlayerPool();
 
     // ── Realtime league_data push (rookie draft, rosters, keepers, trades) ────
@@ -3603,6 +3679,9 @@ window._MSU = {
 
   /* ── Subscribe to real-time picks feed ───────────────────────────────────── */
   let _allPicks = [];
+  // Commissioner-controlled "the auction is live" flag, mirrored from
+  // live_draft/meta so viewers see the LIVE banner before the first pick.
+  let _ldLiveActive = false;
   let _ldPlayerPool = [];
   function fetchPlayerPool() {
     _ldPlayerPool = [{"name":"Bijan Robinson","pos":"RB","nflTeam":"ATL","rank":1},
@@ -4245,22 +4324,53 @@ window._MSU = {
       renderTopAvailable();
       renderNominationStrip();
 
-      const statusEl = document.getElementById('ld-status-bar');
-      if (statusEl) {
-        if (_allPicks.length === 0) {
-          statusEl.className = 'ld-status-bar';
-          statusEl.innerHTML = '<span style="color:var(--text-muted)">Auction draft has not started yet.</span>';
-        } else {
-          const last = _allPicks[_allPicks.length - 1];
-          statusEl.className = 'ld-status-bar ld-live-banner';
-          statusEl.innerHTML =
-            `<span class="ld-live-dot"></span>` +
-            `<span><strong>LIVE</strong> — Auction Draft in progress</span>` +
-            `<span class="ld-live-count">${_allPicks.length} player${_allPicks.length === 1 ? '' : 's'} drafted</span>` +
-            (last ? `<span class="ld-last-pick">Last: ${escHtml(last.player || '')} → ${escHtml(last.team || '')}${last.bid ? ` ($${last.bid})` : ''}</span>` : '');
-        }
-      }
+      renderStatusBar();
     });
+  }
+
+  /* ── Live-flag channel (twin of the rookie draft's liveRookieDraft flag) ────
+     Without this the board only reads as "LIVE" once the first player is
+     awarded. The commissioner flips live_draft/meta.active to put every viewer
+     on the live banner the moment the auction opens — before any picks exist. */
+  function subscribeToLiveFlag() {
+    try {
+      window._fbDb.ref('live_draft/meta').on('value', snap => {
+        const meta = snap.val() || {};
+        _ldLiveActive = !!meta.active;
+        renderStatusBar();
+        syncLiveToggleBtn();
+      });
+    } catch(e) { console.warn('live flag listener failed:', e); }
+  }
+
+  function syncLiveToggleBtn() {
+    const btn = document.getElementById('ld-live-toggle');
+    if (!btn) return;
+    btn.textContent   = _ldLiveActive ? '⏹ End Live Draft' : '🔴 Start Live Draft';
+    btn.style.background = _ldLiveActive ? '#555' : '#8b0000';
+  }
+
+  /* ── Status bar ───────────────────────────────────────────────────────────
+     LIVE when the commissioner has started the draft OR any pick exists (so a
+     draft already underway still reads live even if the flag was never set). */
+  function renderStatusBar() {
+    const statusEl = document.getElementById('ld-status-bar');
+    if (!statusEl) return;
+    const picks = _allPicks || [];
+    if (!_ldLiveActive && picks.length === 0) {
+      statusEl.className = 'ld-status-bar';
+      statusEl.innerHTML = '<span style="color:var(--text-muted)">Auction draft has not started yet.</span>';
+      return;
+    }
+    const last = picks[picks.length - 1];
+    statusEl.className = 'ld-status-bar ld-live-banner';
+    statusEl.innerHTML =
+      `<span class="ld-live-dot"></span>` +
+      `<span><strong>LIVE</strong> — Auction Draft in progress</span>` +
+      (picks.length
+        ? `<span class="ld-live-count">${picks.length} player${picks.length === 1 ? '' : 's'} drafted</span>`
+        : `<span class="ld-live-count">Waiting on the first nomination…</span>`) +
+      (last ? `<span class="ld-last-pick">Last: ${escHtml(last.player || '')} → ${escHtml(last.team || '')}${last.bid ? ` ($${last.bid})` : ''}</span>` : '');
   }
 
   /* ── Rebuild LEAGUE_DATA rosters+budgets from base keepers + all picks ───── */
@@ -4597,6 +4707,9 @@ window._MSU = {
 
         // Now clear the live draft board — the listener will rebuild cleanly from the new base
         await window._fbDb.ref('live_draft/picks').remove();
+        // Finalizing ends the draft — clear the LIVE flag too, or the emptied
+        // board would keep showing the live banner with zero picks.
+        try { await window._fbDb.ref('live_draft/meta').set({ active: false, ts: Date.now() }); } catch(e){}
 
         btn.disabled = false; btn.textContent = '📋 Finalize Draft';
         window.commSave.showToast(`✓ Draft finalized — rosters saved, board cleared${_tbdRemoved ? `, ${_tbdRemoved} undrafted TBD removed` : ''}`);
@@ -4612,6 +4725,27 @@ window._MSU = {
         await window._fbDb.ref('live_draft/picks').remove();
       } catch(e) { alert('Failed to reset: ' + e.message); }
     });
+
+    // ── Live auction toggle (twin of the rookie draft's Start Live Draft) ────
+    // Flips live_draft/meta.active so every viewer's board shows the LIVE
+    // banner immediately — no need to wait for the first player to be awarded.
+    const liveBtn = document.getElementById('ld-live-toggle');
+    if (liveBtn) {
+      liveBtn.addEventListener('click', async () => {
+        const turningOn = !_ldLiveActive;
+        if (turningOn) {
+          if (!confirm('Start the LIVE auction draft?\n\nEveryone viewing the Live Draft page will see the LIVE banner and every pick as you enter it.')) return;
+        } else {
+          if (!confirm('End the live auction draft?\n\nViewers will see the normal draft board again. (This does not delete any picks.)')) return;
+        }
+        liveBtn.disabled = true;
+        try {
+          await window._fbDb.ref('live_draft/meta').set({ active: turningOn, ts: Date.now() });
+        } catch(e) { alert('Failed to update live status: ' + e.message); }
+        liveBtn.disabled = false;
+      });
+      syncLiveToggleBtn();
+    }
   }
 
   /* ── Refresh the board's base rosters/budgets after a commissioner action ──

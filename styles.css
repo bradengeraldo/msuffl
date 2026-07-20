@@ -962,7 +962,14 @@
     transition: background 0.15s;
   }
   .keeper-player-item:hover { background: var(--surface2); }
+  .keeper-player-item.pick-slot .keeper-player-name { color: var(--muted); font-style: italic; }
   .keeper-player-name { color: var(--text); }
+  /* Unused rookie picks — shown as $1 placeholder slots until the pick is made */
+  .rd-pick-tag { font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--yellow); background: rgba(255,216,77,.14);
+    border-radius: 5px; padding: .08rem .35rem; margin-left: .45rem; vertical-align: middle; font-style: normal; }
+  .rd-pick-slot-row .player-name { color: var(--muted); font-style: italic; }
+  .pos-badge.PICK { background: rgba(255,216,77,.14); color: var(--yellow); }
   .keeper-player-val {
     font-family: 'DM Mono', monospace;
     font-size: 0.78rem;
@@ -2069,6 +2076,8 @@
   .kp-pos.QB{background:rgba(255,158,77,.18);color:var(--qb)} .kp-pos.RB{background:rgba(77,184,255,.18);color:var(--rb)}
   .kp-pos.WR{background:rgba(198,120,255,.18);color:var(--wr)} .kp-pos.TE{background:rgba(77,255,184,.18);color:var(--te)}
   .kp-pos.K{background:rgba(255,216,77,.18);color:var(--k)} .kp-pos.DST{background:rgba(255,107,107,.18);color:var(--dst)}
+  .kp-pos.PICK{background:rgba(255,216,77,.14);color:var(--yellow)}
+  .kp-row.kp-pick { border-style: dashed; border-color: rgba(255,216,77,.45); }
   .kp-name { flex: 1; font-weight: 500; }
   .kp-name .sub { color: var(--muted); font-size: .78rem; font-weight: 400; margin-left: .4rem; }
   .kp-val { font-family: 'DM Mono', monospace; font-weight: 500; flex: none; min-width: 56px; text-align: right; }
