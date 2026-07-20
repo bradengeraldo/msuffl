@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-20a';
+const APP_BUILD = '2026-07-20c';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -181,22 +181,75 @@ function _getRosterPlayer(entry) {
   return { name: spKey, pos, age, val, adp };
 }
 
+/* An unused rookie pick has no ADP, position or age to look up, so it gets a
+   synthetic prospect profile instead of being run through the player lookup
+   (which would silently grade it as a replacement-level WR).
+
+   The profile is deliberately young-asset shaped: barely any Win-Now credit,
+   real Rebuild credit, and positive surplus because the pick costs $1 and
+   becomes a player worth more than that. The `fair` figures are the tunable
+   part — they're the estimated auction value of the player the pick turns into,
+   benchmarked against R1 rookies currently carried around $5 with upside above
+   it. Picks are kept out of position grades entirely, since a pick has no
+   position to grade.
+
+   Three tiers, because the drop-off inside round 1 is as big as the gap between
+   rounds: a top-5 pick lands a genuine building block, while 1.10 is much closer
+   to an early second than to 1.01. */
+function _pickProfile(entry) {
+  const label = String(entry.player || '');
+  const rm = /round\s*(\d+)/i.exec(label);
+  const pm = /pick\s*(\d+)/i.exec(label);
+  const paren = /\((\d+)\)/.exec(label);   // "Round 2, Pick 1 (13)" — overall pick no.
+  const round   = rm ? parseInt(rm[1]) : 2;
+  const inRound = pm ? parseInt(pm[1]) : 99;
+  // Round 1 labels carry no parenthetical, so the in-round number IS the overall.
+  const overall = paren ? parseInt(paren[1])
+                : round === 1 ? inRound
+                : (round - 1) * 12 + inRound;
+  const tier = overall <= 5   ? { adp: 160, val: 68, fair: 22 }   // top-5 pick
+             : round === 1    ? { adp: 172, val: 50, fair: 12 }   // rest of round 1
+             : round === 2    ? { adp: 180, val: 38, fair: 8 }    // round 2
+             :                  { adp: 190, val: 25, fair: 5 };   // round 3+
+  const AGE = 21; // rookie — clears the age<=24 youth weighting in Rebuild
+  const redraft  = Math.max(0, Math.round((200 - tier.adp) / 199 * 99));
+  const ageBonus = Math.max(-10, Math.min(10, (AGE - 26) * 2));
+  return {
+    name: entry.player, isPick: true, round, overall, age: AGE, val: tier.val, adp: tier.adp,
+    winNow:  Math.max(0, redraft + ageBonus),
+    rebuild: Math.min(100, Math.round(tier.val + Math.max(-10, Math.min(15, (28 - AGE) * 2.5)))),
+    cost: 1, fair: tier.fair, surplus: tier.fair - 1
+  };
+}
+
+function _isPickEntry(e) { return !!(e && (e.isPickSlot || rdIsPickRow(e.player))); }
+
 function _analyzeRoster(entries) {
   const msu = window._MSU;
   if (!msu || !entries || !entries.length) return null;
   const { calcVal, calcWinNow, calcRebuild, calcSurplus } = msu;
-  const players = entries.map(_getRosterPlayer).filter(Boolean).filter(p => p.adp < 999);
-  if (!players.length) return null;
+  // Picks are scored from their own profile and never enter `players`, so they
+  // can't distort the position-grade buckets or the starter/bench sort.
+  const picks   = entries.filter(_isPickEntry).map(_pickProfile);
+  const players = entries.filter(e => !_isPickEntry(e))
+    .map(_getRosterPlayer).filter(Boolean).filter(p => p.adp < 999);
+  if (!players.length && !picks.length) return null;
   const sorted = [...players].sort((a, b) => calcVal(b) - calcVal(a));
   const starters = sorted.slice(0, 8);
   const bench    = sorted.slice(8);
-  const wnNum = starters.reduce((s,p) => s + calcWinNow(p), 0) + bench.reduce((s,p) => s + calcWinNow(p) * 0.25, 0);
-  const wnDen = starters.length + bench.length * 0.25 || 1;
+  // A pick can't start for you this year, so it carries bench weight.
+  const wnNum = starters.reduce((s,p) => s + calcWinNow(p), 0)
+              + bench.reduce((s,p) => s + calcWinNow(p) * 0.25, 0)
+              + picks.reduce((s,p) => s + p.winNow * 0.25, 0);
+  const wnDen = starters.length + bench.length * 0.25 + picks.length * 0.25 || 1;
   const winNow = Math.round(wnNum / wnDen);
-  const rbNum = players.reduce((s,p) => s + calcRebuild(p) * (p.age <= 24 ? 1.5 : 1), 0);
-  const rbDen = players.reduce((s,p) => s + (p.age <= 24 ? 1.5 : 1), 0) || 1;
+  const rbNum = players.reduce((s,p) => s + calcRebuild(p) * (p.age <= 24 ? 1.5 : 1), 0)
+              + picks.reduce((s,p) => s + p.rebuild * 1.5, 0);
+  const rbDen = players.reduce((s,p) => s + (p.age <= 24 ? 1.5 : 1), 0)
+              + picks.length * 1.5 || 1;
   const rebuild = Math.round(rbNum / rbDen);
-  const keptEntries = entries.filter(e => e.val2026 && e.val2026 !== 'TBD' && !isNaN(parseInt(e.val2026)));
+  const keptEntries = entries.filter(e => !_isPickEntry(e)
+    && e.val2026 && e.val2026 !== 'TBD' && !isNaN(parseInt(e.val2026)));
   let surplusTotal = 0;
   const contractDetails = [];
   keptEntries.forEach(e => {
@@ -205,6 +258,10 @@ function _analyzeRoster(entries) {
     const { cost, fair, surplus } = calcSurplus(p);
     surplusTotal += surplus;
     contractDetails.push({ name: e.player, cost, fair, surplus: Math.round(surplus) });
+  });
+  picks.forEach(p => {
+    surplusTotal += p.surplus;
+    contractDetails.push({ name: p.name, cost: p.cost, fair: p.fair, surplus: Math.round(p.surplus), isPick: true });
   });
   surplusTotal = Math.round(surplusTotal);
   const byPos = { QB: [], RB: [], WR: [], TE: [] };
@@ -407,9 +464,7 @@ function showTeamDetail(team) {
 
   const roster = rosterWithPicks(team);
   _rosterTeam = team;
-  // Roster analysis values real players only — a pick slot has no ADP or position
-  // to grade, so feeding it in would skew every win-now/rebuild number.
-  _rosterEntries = LEAGUE_DATA.rosters[team] || [];
+  _rosterEntries = roster;
   const mgr = TEAM_TO_MGR[team] || team;
   const budget = LEAGUE_DATA.budgets[team];
 
@@ -449,8 +504,11 @@ function showTeamDetail(team) {
 
   const rows = sorted.map(p => {
     if (p.isPickSlot) {
-      return `<tr class="rd-pick-slot-row">
-        <td class="toggle-cell"></td>
+      // Toggleable like any other row: a pick occupies a roster spot and $1 of
+      // budget, so dropping it in scenario mode frees both. budget.totalKept and
+      // budget.playerCount already include picks, so the baseline lines up.
+      return `<tr class="player-toggle-row rd-pick-slot-row" data-val25="0" data-val26="1" data-player-name="${escHtml(p.player)}">
+        <td class="toggle-cell"><span class="toggle-dot"></span></td>
         <td><span class="pos-badge PICK">PICK</span></td>
         <td class="player-name">${escHtml(p.player)}<span class="rd-pick-tag">rookie pick</span></td>
         <td class="val-mono">—</td>
