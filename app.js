@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-20d';
+const APP_BUILD = '2026-07-20f';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -882,6 +882,96 @@ const TRADE_GROUPS = {
   "2025": [2,2,2,1,2,2,2,2,2,2,2],
 };
 
+/* ===================== AUCTION DRAFT HISTORY =====================
+   Two shapes live under LEAGUE_DATA.auctionDrafts, and that's deliberate:
+
+   • source:'workbook' — 2023-2025, recovered from the Master Workbook's
+     "YYYY Keepers" tabs where a BOLD name meant the player was won in that
+     year's auction. Only the bolded names survive, so all we know is team +
+     player + price. No pick order, no positions — the workbook never recorded
+     them. Validated against the season write-ups: the 2023 review names
+     Raheem Mostert as a $2 auction pickup and he lands here bold at $2.
+
+   • source:'live' — 2026 onward, saved straight off the live auction board by
+     Finalize Draft, so it keeps pick order, position and winning bid.
+
+   Future drafts will therefore look richer than the legacy ones. */
+function buildDraftHistory() {
+  const tabsEl    = document.getElementById('draft-history-year-tabs');
+  const contentEl = document.getElementById('draft-history-content');
+  if (!tabsEl || !contentEl) return;
+  const all   = LEAGUE_DATA.auctionDrafts || {};
+  const years = Object.keys(all).sort((a, b) => b - a);
+
+  if (!years.length) {
+    tabsEl.innerHTML = '';
+    contentEl.innerHTML = '<div class="empty-state">No auction draft results recorded yet.</div>';
+    return;
+  }
+
+  tabsEl.innerHTML = years.map((yr, i) =>
+    `<button class="year-tab ${i === 0 ? 'active' : ''}" data-year="${yr}">${yr}</button>`
+  ).join('');
+
+  function teamCard(team, picks, showPos) {
+    const spent = picks.reduce((s, p) => s + (parseInt(p.price != null ? p.price : p.bid) || 0), 0);
+    const rows = picks.map(p => {
+      const price = p.price != null ? p.price : p.bid;
+      return `<div class="adh-pick">
+        ${showPos ? `<span class="pos-badge ${posClass(p.pos)}">${escHtml(formatPos(p.pos))}</span>` : ''}
+        <span class="adh-player">${escHtml(p.player)}</span>
+        <span class="adh-price">$${escHtml(price == null || price === '' ? '?' : price)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="adh-team-card">
+      <div class="adh-team-header">
+        <h3>${escHtml(team)}</h3>
+        <span class="adh-team-meta">${picks.length} pick${picks.length === 1 ? '' : 's'} · $${spent}</span>
+      </div>
+      <div class="adh-pick-list">${rows || '<div class="empty-state">No auction picks recorded</div>'}</div>
+    </div>`;
+  }
+
+  function renderYear(year) {
+    const d = all[year];
+    if (!d) { contentEl.innerHTML = '<div class="empty-state">No data for this year.</div>'; return; }
+
+    if (d.source === 'live' && Array.isArray(d.picks)) {
+      // Group the flat pick list by team, preserving draft order within a team.
+      const byTeam = new Map();
+      d.picks.forEach(p => {
+        if (!byTeam.has(p.team)) byTeam.set(p.team, []);
+        byTeam.get(p.team).push(p);
+      });
+      const teams = [...byTeam.keys()].sort();
+      const total = d.picks.length;
+      const spend = d.picks.reduce((s, p) => s + (parseInt(p.bid) || 0), 0);
+      contentEl.innerHTML =
+        `<div class="adh-note">🎯 <strong>${escHtml(year)} auction draft</strong> — ${total} player${total === 1 ? '' : 's'}, $${spend} spent. Saved from the live draft board.</div>` +
+        `<div class="adh-grid">${teams.map(t => teamCard(t, byTeam.get(t), true)).join('')}</div>`;
+      return;
+    }
+
+    const teams = d.teams || [];
+    const total = teams.reduce((s, t) => s + t.picks.length, 0);
+    const spend = teams.reduce((s, t) => s + t.picks.reduce((n, p) => n + (parseInt(p.price) || 0), 0), 0);
+    contentEl.innerHTML =
+      `<div class="adh-note">📒 <strong>${escHtml(year)} auction draft</strong> — ${total} players, $${spend} spent. Recovered from the league workbook, so only the player and winning bid were recorded — no pick order or positions for this year.</div>` +
+      `<div class="adh-grid">${teams.map(t => teamCard(t.team, t.picks, false)).join('')}</div>`;
+  }
+
+  tabsEl.querySelectorAll('.year-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      tabsEl.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      renderYear(this.dataset.year);
+    });
+  });
+
+  renderYear(years[0]);
+}
+window.buildDraftHistory = buildDraftHistory;
+
 function buildTrades() {
   const tabsEl = document.getElementById('trades-year-tabs');
   const contentEl = document.getElementById('trades-content');
@@ -1278,6 +1368,7 @@ buildRosters();
 buildKeepers();
 buildDraft();
 buildTrades();
+buildDraftHistory();
 buildWriteUps();
 buildHistory();
 
@@ -3490,7 +3581,7 @@ window._MSU = {
                 <input id="ld-pick-bid" class="re-input" placeholder="Auction $" type="number" min="1" style="width:80px" />
                 <button class="comm-btn-save" id="ld-submit-pick">✅ Submit Pick</button>
                 <button class="comm-btn-add" id="ld-finalize-draft" style="background:#1a6b3a">📋 Finalize Draft</button>
-                <button class="comm-btn-add" id="ld-export-rosters" style="background:#2c5f8a">📧 Export Rosters</button>
+                <button class="comm-btn-add" id="ld-export-rosters" style="background:#2c5f8a">⬇ Export Rosters</button>
                 <button class="comm-btn-add" id="ld-reset-draft" style="background:#8b0000">🗑 Reset Draft</button>
                 <button class="comm-btn-add" id="ld-live-toggle" style="background:#8b0000">🔴 Start Live Draft</button>
               </div>
@@ -4443,8 +4534,7 @@ window._MSU = {
      a machine-readable upload, which ESPN would have nothing to do with.
 
      Two files come out: a .txt laid out for typing from, and a flat .csv for
-     spreadsheet work. The site is static with no mail server, so "email" means
-     download both and open a pre-addressed draft to attach them to. */
+     spreadsheet work. */
   const ESPN_POS_ORDER = ['QB','RB','WR','TE','D/ST','K'];
 
   function _normPos(pos) {
@@ -4555,24 +4645,9 @@ window._MSU = {
     // Browsers throttle back-to-back programmatic downloads; stagger the second.
     setTimeout(() => _downloadFile(csvName, espnExportCsv(data), 'text/csv'), 900);
 
-    // Keep the mailto body short — clients truncate long ones, and the real
-    // payload is the two files the user attaches.
-    setTimeout(() => {
-      const subject = `MSUFFL 2026 rosters — ESPN offline draft entry (${slug})`;
-      const body = [
-        `MSUFFL 2026 final rosters — ${data.length} teams, ${totalPlayers} players.`,
-        `Generated ${stamp}.`,
-        '',
-        'Attach the two files just downloaded:',
-        `  • ${txtName} — per-team list in ESPN slot order`,
-        `  • ${csvName} — flat CSV of every roster spot`,
-        '',
-        'Enter via LM Tools > Input Offline Draft Results, one team at a time.'
-      ].join('\n');
-      window.location.href = 'mailto:' + encodeURIComponent('bradengeraldo@gmail.com')
-        + '?subject=' + encodeURIComponent(subject)
-        + '&body='    + encodeURIComponent(body);
-    }, 1600);
+    if (window.commSave && window.commSave.showToast) {
+      window.commSave.showToast(`✓ Exported ${data.length} teams · ${totalPlayers} players`);
+    }
   }
 
   /* ── Rebuild LEAGUE_DATA rosters+budgets from base keepers + all picks ───── */
@@ -4864,6 +4939,29 @@ window._MSU = {
       btn.disabled = true; btn.textContent = 'Saving…';
 
       try {
+        // Archive the board into League History › Draft BEFORE anything clears it.
+        // This is the only moment the full pick list still exists — the Firebase
+        // node gets wiped below and rosters alone can't tell an auction win from
+        // a keeper, which is exactly the gap that made 2023-2025 recoverable only
+        // from bolded workbook cells.
+        {
+          const dy = Object.keys(LEAGUE_DATA.drafts || {})
+            .filter(y => /^\d{4}$/.test(y)).sort();
+          const draftYear = dy[dy.length - 1] || String(new Date().getFullYear());
+          LEAGUE_DATA.auctionDrafts = LEAGUE_DATA.auctionDrafts || {};
+          LEAGUE_DATA.auctionDrafts[draftYear] = {
+            source: 'live',
+            savedAt: Date.now(),
+            picks: _allPicks.map(p => ({
+              pickNum: p.pickNum || null,
+              team:    p.team    || '',
+              player:  p.player  || '',
+              pos:     p.pos     || '',
+              bid:     parseInt(p.bid) || 0
+            }))
+          };
+        }
+
         // Drop any leftover TBD (undrafted Restricted FA) placeholders — they were
         // released into the pool but never drafted, so they shouldn't stay on rosters.
         let _tbdRemoved = 0;
@@ -4913,8 +5011,10 @@ window._MSU = {
         // board would keep showing the live banner with zero picks.
         try { await window._fbDb.ref('live_draft/meta').set({ active: false, ts: Date.now() }); } catch(e){}
 
+        if (typeof buildDraftHistory === 'function') { try { buildDraftHistory(); } catch(e){} }
+
         btn.disabled = false; btn.textContent = '📋 Finalize Draft';
-        window.commSave.showToast(`✓ Draft finalized — rosters saved, board cleared${_tbdRemoved ? `, ${_tbdRemoved} undrafted TBD removed` : ''}`);
+        window.commSave.showToast(`✓ Draft finalized — rosters saved, results archived to League History, board cleared${_tbdRemoved ? `, ${_tbdRemoved} undrafted TBD removed` : ''}`);
       } catch(e) {
         alert('Failed to finalize draft: ' + e.message);
         btn.disabled = false; btn.textContent = '📋 Finalize Draft';

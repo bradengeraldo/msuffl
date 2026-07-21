@@ -961,6 +961,22 @@
     font-size: 0.82rem;
     transition: background 0.15s;
   }
+  /* ── League History › Draft (auction results archive) ── */
+  .adh-note { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: .7rem 1rem; margin-bottom: 1rem; font-size: .88rem; color: var(--text-muted); line-height: 1.5; }
+  .adh-note strong { color: var(--text); }
+  .adh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .adh-team-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .adh-team-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+    padding: .7rem 1rem; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .adh-team-header h3 { margin: 0; font-size: .95rem; }
+  .adh-team-meta { font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+  .adh-pick-list { padding: .35rem 0; }
+  .adh-pick { display: flex; align-items: center; gap: .5rem; padding: .3rem 1rem; font-size: .86rem; }
+  .adh-pick:hover { background: var(--surface2); }
+  .adh-player { flex: 1; }
+  .adh-price { font-family: 'DM Mono', monospace; font-size: .8rem; color: var(--green); }
+
   .keeper-player-item:hover { background: var(--surface2); }
   .keeper-player-item.pick-slot .keeper-player-name { color: var(--muted); font-style: italic; }
   .keeper-player-name { color: var(--text); }
