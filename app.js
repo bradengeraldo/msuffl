@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-20f';
+const APP_BUILD = '2026-07-20h';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -956,7 +956,7 @@ function buildDraftHistory() {
     const total = teams.reduce((s, t) => s + t.picks.length, 0);
     const spend = teams.reduce((s, t) => s + t.picks.reduce((n, p) => n + (parseInt(p.price) || 0), 0), 0);
     contentEl.innerHTML =
-      `<div class="adh-note">📒 <strong>${escHtml(year)} auction draft</strong> — ${total} players, $${spend} spent. Recovered from the league workbook, so only the player and winning bid were recorded — no pick order or positions for this year.</div>` +
+      `<div class="adh-note">📒 <strong>${escHtml(year)} auction draft</strong> — ${total} players, $${spend} spent.</div>` +
       `<div class="adh-grid">${teams.map(t => teamCard(t.team, t.picks, false)).join('')}</div>`;
   }
 

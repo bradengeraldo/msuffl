@@ -215,6 +215,38 @@
     }
   }
 
+  // ── Delete one archived auction draft (League History › Draft) ──────────────
+  // Finalize Draft writes LEAGUE_DATA.auctionDrafts[year], and a mis-finalized
+  // draft would otherwise be stuck there forever: "Reset live database" only
+  // helps if the year hasn't been committed to GitHub yet, since a reset falls
+  // back to the deployed leagueData.js, which by then contains it.
+  //
+  // Deliberately limited to source:'live' entries. The 2023-2025 rows were
+  // recovered from bolded cells in the league workbook and can't be regenerated
+  // from anything in the site, so they're not deletable here.
+  async function deleteArchivedDraft() {
+    const sel = document.getElementById('kp-draft-archive-year');
+    const year = sel && sel.value;
+    if (!year) { alert('Pick a draft year to delete.'); return; }
+    const entry = (LEAGUE_DATA.auctionDrafts || {})[year];
+    if (!entry) { alert(`No archived draft found for ${year}.`); return; }
+    if (entry.source !== 'live') {
+      alert(`${year} was recovered from the league workbook, not saved from the draft board, so it can't be deleted here.`);
+      return;
+    }
+    const n = (entry.picks || []).length;
+    if (!confirm(`Delete the archived ${year} auction draft?\n\n• ${n} pick${n === 1 ? '' : 's'} will be removed from League History › Draft\n• Rosters and budgets are NOT touched — this only removes the archive\n\nRe-finalizing a draft will write it again.`)) return;
+
+    delete LEAGUE_DATA.auctionDrafts[year];
+    let saved = false;
+    if (window.commSave) saved = await window.commSave.saveData('LEAGUE_DATA', LEAGUE_DATA, `Commissioner: delete archived ${year} auction draft`);
+    pushToFirebase();
+    if (typeof buildDraftHistory === 'function') { try { buildDraftHistory(); } catch(e){} }
+    renderPortal();
+    if (saved) alert(`✓ Archived ${year} draft deleted.`);
+    else alert(`⚠️ The ${year} archive was removed in THIS browser but the save did NOT confirm, so it has not been published to the league.\n\nThis usually means you are not logged in as commissioner with a valid GitHub token. Log in and run this again so it persists.`);
+  }
+
   // Wipe ALL live data from Firebase so the site falls back to the data baked into the
   // deployed file. Deletes the whole league_data node (not just leagueData — a leftover
   // _version would keep partial data alive) plus the auction board, then reloads.
@@ -432,6 +464,10 @@
     }).join('');
     const submitted = teams.filter(t => LEAGUE_DATA.keeperLocks && LEAGUE_DATA.keeperLocks[t]).length;
     const released = !!LEAGUE_DATA.rostersFull;
+    // Only board-saved drafts are deletable — see deleteArchivedDraft().
+    const liveDraftYears = Object.keys(LEAGUE_DATA.auctionDrafts || {})
+      .filter(y => (LEAGUE_DATA.auctionDrafts[y] || {}).source === 'live')
+      .sort((a, b) => b - a);
     // Live-write health check: comm tools are useless if Firebase Auth isn't signed in
     let fbUser = null;
     try { fbUser = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null; } catch(e) {}
@@ -465,6 +501,18 @@
           <span class="kp-intro" style="margin:0">Bakes all current data into the deployed site (needs your GitHub token). Use this when the draft is final — it survives a database reset.</span>
         </div>
       </div>
+
+      ${liveDraftYears.length ? `
+      <div class="kp-dash" style="margin-top:1.5rem">
+        <div class="section-title" style="font-size:1rem">🗂️ Archived auction drafts</div>
+        <div class="kp-intro" style="margin:.5rem 0">Finalize Draft saves the board to <strong>League History › Draft</strong>. Delete one here if a draft was finalized by mistake — rosters and budgets are not affected. Only drafts saved from the board can be removed; the 2023–2025 rows came from the league workbook and stay put.</div>
+        <div class="kp-submitbar" style="margin-top:.25rem">
+          <select class="kp-select" id="kp-draft-archive-year" style="max-width:200px">
+            ${liveDraftYears.map(y => `<option value="${esc(y)}">${esc(y)} — ${((LEAGUE_DATA.auctionDrafts[y].picks)||[]).length} picks</option>`).join('')}
+          </select>
+          <button class="kp-btn ghost" id="kp-delete-draft-archive">🗑️ Delete archived draft</button>
+        </div>
+      </div>` : ''}
 
       <div class="kp-dash" style="margin-top:1.5rem;border:1px solid var(--red);border-radius:12px;padding:1rem 1.1rem">
         <div class="section-title" style="font-size:1rem;color:var(--red)">⚠️ Danger zone</div>
@@ -567,6 +615,8 @@
       if (rdb) rdb.addEventListener('click', () => resetDatabase());
       const sgh = root.querySelector('#kp-save-github');
       if (sgh) sgh.addEventListener('click', () => saveAllToGitHub());
+      const dda = root.querySelector('#kp-delete-draft-archive');
+      if (dda) dda.addEventListener('click', () => deleteArchivedDraft());
     }
   }
 
