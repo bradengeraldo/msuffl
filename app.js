@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-20c';
+const APP_BUILD = '2026-07-20d';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -3490,6 +3490,7 @@ window._MSU = {
                 <input id="ld-pick-bid" class="re-input" placeholder="Auction $" type="number" min="1" style="width:80px" />
                 <button class="comm-btn-save" id="ld-submit-pick">✅ Submit Pick</button>
                 <button class="comm-btn-add" id="ld-finalize-draft" style="background:#1a6b3a">📋 Finalize Draft</button>
+                <button class="comm-btn-add" id="ld-export-rosters" style="background:#2c5f8a">📧 Export Rosters</button>
                 <button class="comm-btn-add" id="ld-reset-draft" style="background:#8b0000">🗑 Reset Draft</button>
                 <button class="comm-btn-add" id="ld-live-toggle" style="background:#8b0000">🔴 Start Live Draft</button>
               </div>
@@ -4434,6 +4435,146 @@ window._MSU = {
       (last ? `<span class="ld-last-pick">Last: ${escHtml(last.player || '')} → ${escHtml(last.team || '')}${last.bid ? ` ($${last.bid})` : ''}</span>` : '');
   }
 
+  /* ── Export rosters for ESPN offline draft entry ──────────────────────────
+     ESPN has NO bulk import for offline drafts. LM Tools › "Input Offline Draft
+     Results" is a manual per-slot form: click a roster slot, type the name, pick
+     from autocomplete, then Save Roster one team at a time. So the useful
+     artifact is a per-team reference ordered the way the slots get filled — not
+     a machine-readable upload, which ESPN would have nothing to do with.
+
+     Two files come out: a .txt laid out for typing from, and a flat .csv for
+     spreadsheet work. The site is static with no mail server, so "email" means
+     download both and open a pre-addressed draft to attach them to. */
+  const ESPN_POS_ORDER = ['QB','RB','WR','TE','D/ST','K'];
+
+  function _normPos(pos) {
+    const p = String(pos || '').toUpperCase().trim();
+    return (p === 'DST' || p === 'DEF' || p === 'D') ? 'D/ST' : p;
+  }
+  function _espnPosRank(pos) {
+    const i = ESPN_POS_ORDER.indexOf(_normPos(pos));
+    return i === -1 ? 98 : i;   // unknown positions sort to the end
+  }
+  function _normName(n) { return String(n || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  // Final roster per team = keepers they held + players won in the auction.
+  // Non-keepers are already gone from LEAGUE_DATA.rosters once released, and
+  // rebuildRostersFromPicks keeps auction wins layered on top, so rosters is
+  // the right source. Each row is tagged so KEEPER vs DRAFT stays visible.
+  function espnExportData() {
+    const draftedBy = new Map();
+    (_allPicks || []).forEach(p => { if (p.player) draftedBy.set(_normName(p.player), p); });
+    const teams = (LEAGUE_DATA.teams || Object.keys(LEAGUE_DATA.rosters || {})).slice().sort();
+    return teams.map(team => {
+      const rows = ((LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[team]) || [])
+        // Unused rookie picks aren't players — nothing to type into ESPN.
+        .filter(r => r.player && !(window.rdIsPickRow && window.rdIsPickRow(r.player)))
+        .map(r => {
+          const pick  = draftedBy.get(_normName(r.player));
+          const raw   = pick ? (pick.bid != null ? pick.bid : r.val2026) : r.val2026;
+          const price = (raw == null || raw === '' || raw === 'TBD') ? '' : String(parseInt(raw) || 0);
+          return {
+            player: r.player,
+            pos:    _normPos(pick ? (pick.pos || r.pos) : r.pos),
+            price:  price,
+            source: pick ? 'DRAFT' : 'KEEPER'
+          };
+        })
+        .sort((a, b) => _espnPosRank(a.pos) - _espnPosRank(b.pos)
+                     || (parseInt(b.price) || 0) - (parseInt(a.price) || 0)
+                     || a.player.localeCompare(b.player));
+      const spent = rows.reduce((s, r) => s + (parseInt(r.price) || 0), 0);
+      return { team, rows, spent };
+    });
+  }
+
+  function espnExportText(data, stamp) {
+    const line = '='.repeat(64);
+    const out = [
+      'MSUFFL 2026 — ESPN Offline Draft Entry',
+      'Generated ' + stamp,
+      '',
+      'ESPN has no bulk import. Enter these manually:',
+      '  LM Tools › Input Offline Draft Results › pick a team › click each',
+      '  roster slot › type the name › choose from autocomplete › Save Roster.',
+      '',
+      'Rows are ordered QB / RB / WR / TE / D-ST / K to match the slot order,',
+      'most expensive first inside each position. $ is the winning auction bid',
+      'for DRAFT rows and the keeper price for KEEPER rows.',
+      ''
+    ];
+    data.forEach(({ team, rows, spent }) => {
+      out.push(line);
+      out.push(`${team}  —  ${rows.length} player${rows.length === 1 ? '' : 's'} · $${spent}`);
+      out.push('-'.repeat(64));
+      if (!rows.length) out.push('  (no players)');
+      rows.forEach(r => {
+        out.push('  ' + _normPos(r.pos).padEnd(5)
+               + r.player.padEnd(30)
+               + ('$' + (r.price || '?')).padStart(6) + '  '
+               + r.source);
+      });
+      out.push('');
+    });
+    const totalPlayers = data.reduce((s, d) => s + d.rows.length, 0);
+    out.push(line);
+    out.push(`TOTAL: ${data.length} teams · ${totalPlayers} players`);
+    return out.join('\n');
+  }
+
+  function espnExportCsv(data) {
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const lines = ['Team,Player,Pos,Price,Source'];
+    data.forEach(({ team, rows }) => {
+      rows.forEach(r => lines.push([team, r.player, _normPos(r.pos), r.price, r.source].map(q).join(',')));
+    });
+    return lines.join('\r\n');
+  }
+
+  function _downloadFile(filename, text, mime) {
+    const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { document.body.removeChild(a); } catch(e){} URL.revokeObjectURL(url); }, 1500);
+  }
+
+  function exportRostersForEspn() {
+    const data = espnExportData();
+    const totalPlayers = data.reduce((s, d) => s + d.rows.length, 0);
+    if (!totalPlayers) { alert('No roster data to export.'); return; }
+    const now   = new Date();
+    const stamp = now.toLocaleString();
+    const slug  = now.toISOString().slice(0, 10);
+    const txtName = `msuffl-2026-espn-entry-${slug}.txt`;
+    const csvName = `msuffl-2026-rosters-${slug}.csv`;
+
+    _downloadFile(txtName, espnExportText(data, stamp), 'text/plain');
+    // Browsers throttle back-to-back programmatic downloads; stagger the second.
+    setTimeout(() => _downloadFile(csvName, espnExportCsv(data), 'text/csv'), 900);
+
+    // Keep the mailto body short — clients truncate long ones, and the real
+    // payload is the two files the user attaches.
+    setTimeout(() => {
+      const subject = `MSUFFL 2026 rosters — ESPN offline draft entry (${slug})`;
+      const body = [
+        `MSUFFL 2026 final rosters — ${data.length} teams, ${totalPlayers} players.`,
+        `Generated ${stamp}.`,
+        '',
+        'Attach the two files just downloaded:',
+        `  • ${txtName} — per-team list in ESPN slot order`,
+        `  • ${csvName} — flat CSV of every roster spot`,
+        '',
+        'Enter via LM Tools > Input Offline Draft Results, one team at a time.'
+      ].join('\n');
+      window.location.href = 'mailto:' + encodeURIComponent('bradengeraldo@gmail.com')
+        + '?subject=' + encodeURIComponent(subject)
+        + '&body='    + encodeURIComponent(body);
+    }, 1600);
+  }
+
   /* ── Rebuild LEAGUE_DATA rosters+budgets from base keepers + all picks ───── */
   function rebuildRostersFromPicks(picks) {
     if (!window._ldBaseRosters) return;
@@ -4786,6 +4927,18 @@ window._MSU = {
         await window._fbDb.ref('live_draft/picks').remove();
       } catch(e) { alert('Failed to reset: ' + e.message); }
     });
+
+    const exportBtn = document.getElementById('ld-export-rosters');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        exportBtn.disabled = true;
+        const label = exportBtn.textContent;
+        exportBtn.textContent = 'Building…';
+        try { exportRostersForEspn(); }
+        catch(e) { alert('Export failed: ' + e.message); }
+        setTimeout(() => { exportBtn.disabled = false; exportBtn.textContent = label; }, 2000);
+      });
+    }
 
     // ── Live auction toggle (twin of the rookie draft's Start Live Draft) ────
     // Flips live_draft/meta.active so every viewer's board shows the LIVE
