@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-20i';
+const APP_BUILD = '2026-07-20j';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -162,11 +162,19 @@ function buildHome() {
 let _rosterTeam = null;
 let _rosterEntries = [];
 
+// SP_DATA/TP are static, so a name resolves to the same profile every time.
+// The Rosters page now analyses all 12 teams on every re-render (including on
+// every auction pick), and the lookup below is a linear scan of ~700 SP_DATA
+// keys per player — memoising keeps that off the draft-night hot path.
+const _rosterPlayerCache = new Map();
+
 function _getRosterPlayer(entry) {
   const msu = window._MSU;
   if (!msu) return null;
   const { SP_DATA, TP, estimateFairAuctionValue, estimateDefaultKeeperCost } = msu;
   const rawName = (entry.player || '').trim();
+  const _ck = rawName + '|' + (entry.pos || '');
+  if (_rosterPlayerCache.has(_ck)) return _rosterPlayerCache.get(_ck);
   const nameLower = rawName.toLowerCase();
   let sp = null, spKey = rawName;
   for (const k of Object.keys(SP_DATA)) {
@@ -178,7 +186,9 @@ function _getRosterPlayer(entry) {
   const adp = tp ? tp.adp : 150;
   const val = tp ? tp.val : (sp ? Math.max(10, Math.round(sp.f * 0.7)) : 15);
   const age = tp ? tp.age : 26;
-  return { name: spKey, pos, age, val, adp };
+  const out = { name: spKey, pos, age, val, adp };
+  _rosterPlayerCache.set(_ck, out);
+  return out;
 }
 
 /* An unused rookie pick has no ADP, position or age to look up, so it gets a
@@ -350,6 +360,32 @@ function _renderRosterAnalysis(analysis) {
   '</div>';
 }
 
+/* Condensed roster analysis for the Rosters page team cards — same
+   _analyzeRoster output as the full detail panel, reduced to the three
+   headline numbers plus position grades so teams can be compared side by side
+   without opening each one. Re-rendered on every auction pick via buildRosters,
+   so it tracks the draft live. */
+function _renderTeamCardAnalysis(analysis) {
+  if (!analysis) return '<div class="team-ra"><div class="team-ra-pending">Analysis loading…</div></div>';
+  const { winNow, rebuild, surplusTotal, posGrades } = analysis;
+  const lvl  = s => s >= 65 ? 'high' : s >= 42 ? 'mid' : 'low';
+  const slvl = s => s >= 15 ? 'high' : s >= -10 ? 'mid' : 'low';
+  const metric = (label, cls, text) =>
+    `<div class="team-ra-metric ${cls}"><span class="val">${text}</span><span class="lbl">${label}</span></div>`;
+  const grades = ['QB','RB','WR','TE'].map(pos => {
+    const g = (posGrades[pos] || { grade: 'F' }).grade;
+    return `<span class="team-ra-grade"><span class="p">${pos}</span><span class="g ${g[0]}">${g}</span></span>`;
+  }).join('');
+  return `<div class="team-ra">
+    <div class="team-ra-row">
+      ${metric('Win-Now', lvl(winNow), winNow)}
+      ${metric('Rebuild', lvl(rebuild), rebuild)}
+      ${metric('Surplus', slvl(surplusTotal), (surplusTotal < 0 ? '-$' : '+$') + Math.abs(surplusTotal))}
+    </div>
+    <div class="team-ra-grades">${grades}</div>
+  </div>`;
+}
+
 function _updateRosterAnalysisPanel() {
   const detail = document.getElementById('team-detail-content');
   if (!detail || !_rosterEntries.length) return;
@@ -448,12 +484,18 @@ function buildRosters() {
           <span class="lbl">FAAB Left</span>
         </div>` : ''}
       </div>
+      ${_renderTeamCardAnalysis(_analyzeRoster(roster))}
     </div>`;
   }).join('');
-  grid.addEventListener('click', e => {
-    const card = e.target.closest('.team-card[data-team]');
-    if (card) showTeamDetail(card.dataset.team);
-  });
+  // Bind once — buildRosters re-runs on every auction pick, and re-adding the
+  // listener each time would stack duplicate handlers on the same grid.
+  if (!grid._cardClickWired) {
+    grid._cardClickWired = true;
+    grid.addEventListener('click', e => {
+      const card = e.target.closest('.team-card[data-team]');
+      if (card) showTeamDetail(card.dataset.team);
+    });
+  }
 }
 
 function showTeamDetail(team) {
@@ -2343,6 +2385,11 @@ window._MSU = {
   calcVal, calcWinNow, calcRebuild, calcSurplus, calcRedraftScore,
   estimateFairAuctionValue, estimateDefaultKeeperCost, totalSide
 };
+
+// buildRosters() runs earlier in this file, before this IIFE has published
+// _MSU — so the team cards rendered with "Analysis loading…". Re-render now
+// that the valuation data exists.
+if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
 
 })(); // end trade analyzer IIFE
 
