@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-07-20h';
+const APP_BUILD = '2026-07-20i';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -4414,11 +4414,20 @@ window._MSU = {
       .filter(x => x.team);
   }
 
+  // Unused rookie picks a team still owns, as $1 roster-shaped rows. Every
+  // player-count / cap calculation on this page has to include them or the
+  // board disagrees with the Rosters and Keepers pages.
+  function _pickSlots(team) {
+    return (window.getRookiePickSlots ? window.getRookiePickSlots(team) : []);
+  }
+
   function teamIsEligible(team) {
     const b = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
     const roster = (LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[team]) || [];
+    const slots  = _pickSlots(team);
+    const rosterCount = roster.filter(r => r.val2026 !== 'TBD').length + slots.length;
     const kept    = b ? parseInt(b.totalKept)   || 0 : 0;
-    const players = b ? parseInt(b.playerCount) || roster.filter(r => r.val2026 !== 'TBD').length : roster.filter(r => r.val2026 !== 'TBD').length;
+    const players = b ? parseInt(b.playerCount) || rosterCount : rosterCount;
     return players < 16 && kept < 200;
   }
 
@@ -4666,10 +4675,18 @@ window._MSU = {
     for (const team of Object.keys(LEAGUE_DATA.budgets || {})) {
       const b      = LEAGUE_DATA.budgets[team];
       const roster = LEAGUE_DATA.rosters[team] || [];
-      const totalKept = roster.reduce((s, r) => s + (parseInt(r.val2026) || 0), 0);
+      // Unused rookie picks are $1 roster commitments, but they're DERIVED from
+      // the draft board rather than stored in rosters — so recomputing budgets
+      // from rosters alone silently dropped them here, leaving the live board
+      // showing fewer players and more cap room than the Rosters and Keepers
+      // pages. Worse than cosmetic: teamIsEligible and the bid cap checks read
+      // these numbers, so a team could be allowed to overdraft.
+      const slots = _pickSlots(team);
+      const totalKept = roster.reduce((s, r) => s + (parseInt(r.val2026) || 0), 0)
+                      + slots.reduce((s, r) => s + (parseInt(r.val2026) || 0), 0);
       const budget    = parseInt(b.budget) || 200;
       b.totalKept    = String(totalKept);
-      b.playerCount  = String(roster.filter(r => r.val2026 !== 'TBD').length);
+      b.playerCount  = String(roster.filter(r => r.val2026 !== 'TBD').length + slots.length);
       b.remaining    = String(budget - totalKept);
       b.inSeasonFaab = String(budget - totalKept + 25);
     }
@@ -4688,9 +4705,11 @@ window._MSU = {
 
     function teamCardHtml(team) {
       const roster  = LEAGUE_DATA.rosters[team] || [];
+      const slots   = _pickSlots(team);
+      const rosterCount = roster.filter(r => r.val2026 !== 'TBD').length + slots.length;
       const budget  = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[team];
       const kept    = budget ? parseInt(budget.totalKept)   || 0 : 0;
-      const players = budget ? parseInt(budget.playerCount) || roster.filter(r => r.val2026 !== 'TBD').length : roster.filter(r => r.val2026 !== 'TBD').length;
+      const players = budget ? parseInt(budget.playerCount) || rosterCount : rosterCount;
       const rem     = budget ? parseInt(budget.remaining)   : (200 - kept);
 
       const maxPlayers = players >= 16;
@@ -4826,8 +4845,10 @@ window._MSU = {
       {
         const eb = LEAGUE_DATA.budgets && LEAGUE_DATA.budgets[newTeam];
         const er = (LEAGUE_DATA.rosters && LEAGUE_DATA.rosters[newTeam]) || [];
+        const es = _pickSlots(newTeam);
+        const erCount = er.filter(r => r.val2026 !== 'TBD').length + es.length;
         let kept    = eb ? parseInt(eb.totalKept)   || 0 : 0;
-        let players = eb ? parseInt(eb.playerCount) || er.filter(r => r.val2026 !== 'TBD').length : er.filter(r => r.val2026 !== 'TBD').length;
+        let players = eb ? parseInt(eb.playerCount) || erCount : erCount;
         if (pick.team === newTeam) { kept -= (parseInt(pick.bid) || 0); players -= 1; }
         if (players + 1 > 16)   { alert(`${newTeam} would exceed 16 players.`); return; }
         if (kept + newBid > 200) { alert(`${newTeam} only has $${200 - kept} of cap room — a $${newBid} bid would put them over $200.`); return; }
