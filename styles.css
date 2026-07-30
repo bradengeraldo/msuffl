@@ -2132,3 +2132,99 @@
   .kp-dash-team .st { font-size: .78rem; font-family: 'DM Mono', monospace; }
   .kp-dash-team .st.sub { color: var(--green); } .kp-dash-team .st.pend { color: var(--muted); }
   .kp-dash-team .reopen { margin-top: .5rem; font-size: .72rem; padding: .3rem .6rem; }
+
+  /* ===================== RULES PAGE ===================== */
+  .rules-hero {
+    text-align: center;
+    padding: 1.5rem 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+  }
+  .rules-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: 0.06em;
+    color: var(--text);
+  }
+  .rules-title::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 3px;
+    background: var(--green);
+    margin: 0.5rem auto 0;
+    border-radius: 2px;
+    box-shadow: 0 0 12px var(--green-glow);
+  }
+  .rules-sub {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .rules-cat {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.08em;
+    color: var(--green);
+    margin: 2.25rem 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .rules-cat::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .rules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.1rem;
+  }
+  .rules-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem 1.35rem;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .rules-card:hover {
+    border-color: var(--border-bright);
+    transform: translateY(-2px);
+  }
+  .rules-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.35rem;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    margin: 0 0 0.85rem;
+  }
+  .rules-card ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .rules-card li {
+    position: relative;
+    padding-left: 1.15rem;
+    margin-bottom: 0.7rem;
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+  .rules-card li:last-child { margin-bottom: 0; }
+  .rules-card li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.6em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green-glow);
+  }
+  .rules-card li strong { color: var(--green); font-weight: 600; }
+  .rules-card li em { color: var(--muted); font-style: italic; }

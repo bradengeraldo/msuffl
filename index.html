@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2026-07-20j">
+<link rel="stylesheet" href="styles.css?v=2026-07-29a">
 </head>
 <body>
 
@@ -29,6 +29,7 @@
       <button class="nav-btn" data-page="keepers">2026 Keepers</button>
       <button class="nav-btn" data-page="tradeanalyzer">Trade Analyzer</button>
       <button class="nav-btn" data-page="history">League History</button>
+      <button class="nav-btn" data-page="rules">Rules</button>
     </nav>
   <button class="nav-btn comm-lock-btn" id="comm-lock-btn" title="Commissioner login">🔒</button>
   </div>
@@ -45,6 +46,129 @@
     </div>
 
     <div id="home-teams-grid"></div>
+  </div>
+
+  <!-- RULES PAGE -->
+  <div class="page" id="page-rules">
+    <div class="rules-hero">
+      <h2 class="rules-title">League Rules</h2>
+      <p class="rules-sub">The official MSUFFL rulebook.</p>
+    </div>
+
+    <div class="rules-cat">General</div>
+    <div class="rules-grid">
+      <div class="rules-card">
+        <h3>💵 Buy-In</h3>
+        <ul>
+          <li>Buy-in <strong>$100</strong></li>
+          <li>$900 to winner (75%)</li>
+          <li>$100 to runner-up (money back)</li>
+          <li>$40 for division title (3 divisions)</li>
+          <li>$80 for most total points through the regular season</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>🧢 Salary Cap</h3>
+        <ul>
+          <li>Each team has a <strong>$200 salary cap</strong> for Keepers, Rookies, Free agent draft, and Free agency (unless reduced due to penalty).</li>
+          <li>Salary resets at the time of keeper selections to $200.</li>
+          <li>From that salary you reduce by the keeper value, and $1 is allocated for every rookie you draft.</li>
+          <li>The remainder plus $25 is your free agent budget for the rest of the year, until the salary resets the following preseason.</li>
+          <li>Free agents go to the highest bidder.</li>
+          <li>$0 minimum bid — even if you don't have money left, you can still pick up players.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>👑 3 Queens</h3>
+        <ul>
+          <li>Braden, Mike, and Adam oversee all transactions and rules. They only step in where a ruling is necessary — including but not limited to clear and obvious collusion, potential rule loopholes, or an action not covered by current rules.</li>
+          <li>Annual vote on who will be the queens.</li>
+          <li><strong>Division selection:</strong> After the draft is complete, the bottom 3 teams from the previous season do a snake draft of the teams to determine who will be in their division.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-cat">Offseason</div>
+    <div class="rules-grid">
+      <div class="rules-card">
+        <h3>🔄 Offseason Trading</h3>
+        <ul>
+          <li>Trading can occur at any time except the period between the trade deadline and the final game of the fantasy season.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>🏈 Rookie Draft</h3>
+        <ul>
+          <li>Two rounds, composed entirely of rookies, in normal NFL draft format (worst-performing team owns the right to select 1st in both rounds).</li>
+          <li>Owners protect the rights to the players they draft for three years. Rights are granted at $1 for the first year, $5 for the second, and $9 for the third. This assumes the drafting team keeps the player for 3 years straight. As soon as a team drops a player on a rookie contract, that player is no longer on a rookie contract.</li>
+          <li>After year 3, players on rookie contracts become restricted free agents. They go into the free agent bid pool and are bid on as normal. Once bidding is complete, the team that owned the player previously may match the bid price to keep them, or allow the player to move to the new team.</li>
+          <li>The rookie draft is held before the start of the Auction Draft.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>🔒 Keepers</h3>
+        <ul>
+          <li>Teams must finalize keepers after the Rookie Draft and prior to the free agent auction. All players on your current roster are eligible to be kept as long as you remain under the $200 salary cap. Any player drafted by you (or acquired via trade last season) can be kept at last year's average auction value if they were never dropped at any point during the season.</li>
+          <li>Teams can sign players for multiple years in a row, with the yearly salary raised by the greater of 20% of the previous year's number or $4.</li>
+          <li>The previous year's salary figure comes from the salary a player was kept at or the amount they were picked up for.</li>
+          <li>All values are rounded to the full dollar (.1–.4 rounds down, .5–.9 rounds up).</li>
+          <li>GMs may keep as many players off their current roster as they'd like, as long as they are under the salary cap.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>🔨 Auction Draft</h3>
+        <ul>
+          <li>All available players that are not keepers (excluding rookies) are available in the auction draft.</li>
+          <li>Teams use their remaining salary after keepers. A random order is selected for teams to nominate players, and the highest bidder wins that player. All teams may bid on any and all players regardless of nominating order.</li>
+          <li>The draft is held at a location selected by the reigning champion, in a live draft format.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-cat">Season</div>
+    <div class="rules-grid">
+      <div class="rules-card">
+        <h3>📝 Free Agency</h3>
+        <ul>
+          <li>Free Agency continues to be based on the waiver wire order. Players may be dropped and picked up as you'd like, but all players kept for the next year that were acquired through free agency are kept at their acquired auction value plus the adjustment.</li>
+          <li>Once you drop a player, if you pick him back up before the end of the year you forfeit his original salary from the year prior.</li>
+          <li>Free Agency ends at the finale of each team's respective season. This ensures no team "dumps" players to get more attractive keeper options for the next year — you must plan throughout the season for which players you want to keep.</li>
+          <li><em>Example:</em> a team that doesn't make the playoffs can no longer add players from Free Agency after the last game of the season.</li>
+          <li><em>Example:</em> a playoff team that loses in the 2nd round can add players up until the 2nd round loss.</li>
+          <li>Any player picked up in free agency after the playoffs begin becomes a restricted free agent — going into the bid pool as normal, with the previous owner able to match the winning bid.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>📋 Lineup Management</h3>
+        <ul>
+          <li>Every team must set a full lineup every week with players that are healthy, NOT on a bye, and projected to score more than 0 points.</li>
+          <li>If a full lineup is not set, the team is deducted $5 of Draft Budget for each roster spot that isn't an active player.</li>
+          <li><strong>Notable exceptions:</strong> a player was not ruled out prior to the waiver window closing and the owner had no other active options; only IR rules the system allows apply, with no further restrictions.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>➕ Other</h3>
+        <ul>
+          <li>Winner of the loser bracket gets $10 added to their post-draft free agent auction budget.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-cat">Covid-19 Clarifications</div>
+    <div class="rules-grid">
+      <div class="rules-card">
+        <h3>🛏️ Additional Roster / IR Spots</h3>
+        <ul>
+          <li>No additional roster or IR spots will be added — we already have very deep benches and an IR slot. It's unlikely an owner couldn't fill a starting lineup due to Covid while the league is still playing games.</li>
+        </ul>
+      </div>
+      <div class="rules-card">
+        <h3>🚫 Early Season Cancellation</h3>
+        <ul>
+          <li>To avoid a fluke winner, if the season is cancelled before completion, everyone's money is refunded. Rosters stay as they are at that time, and draft position is determined by standings at the time of cancellation.</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <!-- ROSTERS PAGE -->
@@ -247,7 +371,7 @@
   // Date.now() forces a genuinely fresh fetch on every page load instead.
   document.write('<script src="leagueData.js?t=' + Date.now() + '"></' + 'script>');
 </script>
-<script defer src="app.js?v=2026-07-20j"></script>
+<script defer src="app.js?v=2026-07-29a"></script>
 
 <!-- ===== COMMISSIONER MODE ===== -->
 
@@ -287,7 +411,7 @@
 <!-- ===== END COMMISSIONER MODE ===== -->
 
 <!-- ===== KEEPER SUBMISSION PORTAL ===== -->
-<script defer src="keepers.js?v=2026-07-20j"></script>
+<script defer src="keepers.js?v=2026-07-29a"></script>
 <!-- ===== END KEEPER SUBMISSION PORTAL ===== -->
 
 </body>
