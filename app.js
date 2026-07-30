@@ -1405,6 +1405,33 @@ function buildHistory() {
   renderH2H(defaultOwner);
 }
 
+// ── Rules page renderer (data lives in RULES_SECTIONS; commissioner-editable) ──
+function rulesInlineMd(str) {
+  var s = String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return s;
+}
+function buildRules() {
+  var el = document.getElementById('rules-content');
+  if (!el || typeof RULES_SECTIONS === 'undefined') return;
+  var order = [], groups = {};
+  RULES_SECTIONS.forEach(function(c) {
+    var cat = c.category || 'Rules';
+    if (!groups[cat]) { groups[cat] = []; order.push(cat); }
+    groups[cat].push(c);
+  });
+  el.innerHTML = order.map(function(cat) {
+    var cards = groups[cat].map(function(c) {
+      var items = (c.items || []).map(function(it) { return '<li>' + rulesInlineMd(it) + '</li>'; }).join('');
+      return '<div class="rules-card"><h3>' + rulesInlineMd(c.title || '') + '</h3><ul>' + items + '</ul></div>';
+    }).join('');
+    return '<div class="rules-cat">' + rulesInlineMd(cat) + '</div><div class="rules-grid">' + cards + '</div>';
+  }).join('');
+}
+window.buildRules = buildRules;
+
 buildHome();
 buildRosters();
 buildKeepers();
@@ -1412,6 +1439,7 @@ buildDraft();
 buildTrades();
 buildDraftHistory();
 buildWriteUps();
+buildRules();
 buildHistory();
 
 // Make showTeamDetail global
@@ -2878,6 +2906,109 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
     if (pageId === 'trades')   injectTradesEditBar();
     if (pageId === 'draft')    injectDraftEditBar();
     if (pageId === 'writeups') injectWriteupsEditBar();
+    if (pageId === 'rules')    injectRulesEditBar();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     RULES EDITOR
+  ══════════════════════════════════════════════════════════ */
+  function injectRulesEditBar() {
+    const page = document.getElementById('page-rules');
+    if (!page || page.querySelector('.comm-page-editbar')) return;
+    const bar = document.createElement('div');
+    bar.className = 'comm-page-editbar';
+    bar.innerHTML = `
+      <span class="comm-page-editlabel">⚡ Edit Rules</span>
+      <button class="comm-btn-add" id="rl-add">＋ New Rule Card</button>
+      <button class="comm-btn-save" id="rl-save">💾 Save All</button>
+    `;
+    const hero = page.querySelector('.rules-hero');
+    hero ? hero.after(bar) : page.insertBefore(bar, page.firstChild);
+    document.getElementById('rl-add').addEventListener('click', addRule);
+    document.getElementById('rl-save').addEventListener('click', saveRules);
+    renderRulesEdit();
+  }
+
+  function renderRulesEdit() {
+    const el = document.getElementById('rules-content');
+    if (el === null || typeof RULES_SECTIONS === 'undefined') return;
+    el.innerHTML = `
+      <div class="wu-list">
+        ${RULES_SECTIONS.map((s,i) => `
+          <div class="wu-row" data-i="${i}">
+            <div class="wu-row-header">
+              <span class="wu-row-title">${esc(s.title||'')} <span class="wu-row-year">(${esc(s.category||'')})</span></span>
+              <div class="wu-row-btns">
+                <button class="comm-btn-add rl-edit-btn" data-i="${i}">✏️ Edit</button>
+                <button class="re-del-btn rl-del-btn" data-i="${i}">✕</button>
+              </div>
+            </div>
+            <div class="wu-editor-area" id="rl-editor-${i}" style="display:none">
+              <div class="wu-meta-row">
+                <input class="re-input rl-title" data-i="${i}" value="${esc(s.title||'')}" placeholder="Title (emoji ok)" style="flex:2" />
+                <input class="re-input rl-cat" data-i="${i}" value="${esc(s.category||'')}" placeholder="Category" style="flex:1" />
+              </div>
+              <textarea class="wu-textarea rl-items" data-i="${i}" rows="8">${esc((s.items||[]).join('\n'))}</textarea>
+              <small style="color:var(--muted);font-size:11px">One bullet per line. Use **bold** and *italic* for emphasis — no HTML needed.</small>
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+    el.querySelectorAll('.rl-edit-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const i = this.dataset.i;
+        const area = document.getElementById(`rl-editor-${i}`);
+        const isOpen = area.style.display !== 'none';
+        el.querySelectorAll('.wu-editor-area').forEach(a => a.style.display = 'none');
+        el.querySelectorAll('.rl-edit-btn').forEach(b => b.textContent = '✏️ Edit');
+        if (!isOpen) { area.style.display = 'block'; this.textContent = '▲ Close'; }
+      });
+    });
+    el.querySelectorAll('.rl-del-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (!confirm('Delete this rule card?')) return;
+        RULES_SECTIONS.splice(parseInt(this.dataset.i), 1);
+        renderRulesEdit();
+      });
+    });
+    el.querySelectorAll('.rl-title').forEach(inp => {
+      inp.addEventListener('input', function() { RULES_SECTIONS[+this.dataset.i].title = this.value; });
+    });
+    el.querySelectorAll('.rl-cat').forEach(inp => {
+      inp.addEventListener('input', function() { RULES_SECTIONS[+this.dataset.i].category = this.value; });
+    });
+    el.querySelectorAll('.rl-items').forEach(ta => {
+      ta.addEventListener('input', function() {
+        RULES_SECTIONS[+this.dataset.i].items = this.value.split('\n').map(x => x.trim()).filter(Boolean);
+      });
+    });
+  }
+
+  function addRule() {
+    RULES_SECTIONS.push({ category: 'General', title: '📌 New Rule', items: ['Describe the rule here.'] });
+    renderRulesEdit();
+    const btns = document.querySelectorAll('.rl-edit-btn');
+    if (btns.length) btns[btns.length - 1].click(); // auto-open the new card
+  }
+
+  async function saveRules() {
+    const btn = document.getElementById('rl-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    // Flush current field values into the data before saving
+    document.querySelectorAll('.rl-title').forEach(inp => { RULES_SECTIONS[+inp.dataset.i].title = inp.value; });
+    document.querySelectorAll('.rl-cat').forEach(inp => { RULES_SECTIONS[+inp.dataset.i].category = inp.value; });
+    document.querySelectorAll('.rl-items').forEach(ta => {
+      RULES_SECTIONS[+ta.dataset.i].items = ta.value.split('\n').map(x => x.trim()).filter(Boolean);
+    });
+    const ok = await window.commSave.saveData('RULES_SECTIONS', RULES_SECTIONS, 'Commissioner: update league rules');
+    btn.disabled = false; btn.textContent = '💾 Save All';
+    if (ok) {
+      renderRulesEdit();
+      window.buildRules && window.buildRules();
+    } else {
+      const reason = window.commSave.getLastError ? window.commSave.getLastError() : '';
+      alert(`⚠️ Rules were NOT saved — the save did not confirm.${reason ? `\n\nReason: ${reason}` : ''}\n\nYour edits are still here in the editor (not lost), but they have not been published. Log in again with a fresh GitHub token and click "Save All" again.`);
+    }
   }
 
   /* ══════════════════════════════════════════════════════════
