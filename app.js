@@ -1193,33 +1193,25 @@ function buildHistory() {
   const titled = Object.entries(HISTORY_DATA.ownerStats)
     .filter(([_, s]) => s.titles > 0)
     .sort((a,b) => b[1].titles - a[1].titles || b[1].wpct - a[1].wpct);
-  // Per-owner championship years
+  // Per-owner year lists for each award (used for counts AND hover tooltips)
   const titleYears = {};
-  const secondPlaceCount = {};
-  const lastPlaceCount = {};
-  const pfLeaderCount = {};
+  const secondPlaceYears = {};
+  const lastPlaceYears = {};
+  const pfLeaderYears = {};
+  const pushYear = (map, owner, yr) => { (map[owner] = map[owner] || []).push(yr); };
   yearsDesc.slice().sort((a,b)=>a-b).forEach(yr => {
     const season = HISTORY_DATA.seasons[yr];
     if (!season) return;
     const champ = season.teams.find(t => t.finalRank === 1);
-    if (champ) {
-      titleYears[champ.owner] = titleYears[champ.owner] || [];
-      titleYears[champ.owner].push(yr);
-    }
+    if (champ) pushYear(titleYears, champ.owner, yr);
     const runnerUp = season.teams.find(t => t.finalRank === 2);
-    if (runnerUp) {
-      secondPlaceCount[runnerUp.owner] = (secondPlaceCount[runnerUp.owner] || 0) + 1;
-    }
+    if (runnerUp) pushYear(secondPlaceYears, runnerUp.owner, yr);
     const maxRank = Math.max(...season.teams.map(t => t.finalRank));
     const lastPlace = season.teams.find(t => t.finalRank === maxRank);
-    if (lastPlace) {
-      lastPlaceCount[lastPlace.owner] = (lastPlaceCount[lastPlace.owner] || 0) + 1;
-    }
+    if (lastPlace) pushYear(lastPlaceYears, lastPlace.owner, yr);
     const maxPF = Math.max(...season.teams.map(t => t.pf));
     const pfLeader = season.teams.find(t => t.pf === maxPF);
-    if (pfLeader) {
-      pfLeaderCount[pfLeader.owner] = (pfLeaderCount[pfLeader.owner] || 0) + 1;
-    }
+    if (pfLeader) pushYear(pfLeaderYears, pfLeader.owner, yr);
   });
   let lastCount = -1, displayRank = 0;
   board.innerHTML = titled.map(([owner, s], i) => {
@@ -1243,6 +1235,27 @@ function buildHistory() {
   const tbody = document.getElementById('alltime-tbody');
   const headers = document.querySelectorAll('#alltime-table th');
   const currentSet = new Set(HISTORY_DATA.currentOwners);
+  // Regular-season division titles by owner, tallied from the ESPN season JSON
+  // (Data/msuffl_2011–2025.json). Winner = best overall record within each
+  // division, tiebreaker highest total points for. 2011–2014 = 2 divisions,
+  // 2015 onward = 3 divisions. 41 titles total across 15 seasons.
+  const DIVISION_TITLE_YEARS = {
+    'Brad White': [2011, 2012, 2014, 2015, 2016, 2020, 2021, 2022, 2024],
+    'Braden Geraldo': [2013, 2015, 2016, 2017, 2020, 2025],
+    'Campbell Gillespie': [2012, 2014, 2019, 2023, 2025],
+    'Casey Smith': [2015, 2016, 2018, 2020, 2024],
+    'Blake Keaton': [2013, 2019, 2023, 2024],
+    'Adam Banchiu': [2018, 2021, 2022],
+    'Kyle Chorazyczewski': [2019, 2021, 2025],
+    'James Laethem': [2017, 2018],
+    'Dan Miller': [2011],
+    'Scott Simon': [2017],
+    'Michael Costello': [2022],
+    'Bob Willen': [2023],
+  };
+  const DIVISION_TITLES = Object.fromEntries(
+    Object.entries(DIVISION_TITLE_YEARS).map(([o, yrs]) => [o, yrs.length])
+  );
   let rows = Object.entries(HISTORY_DATA.ownerStats).map(([owner, s]) => {
     const games = s.w + s.l + s.t;
     const pfPerGame = games ? s.pf / games : 0;
@@ -1255,10 +1268,15 @@ function buildHistory() {
       wpct: s.wpct,
       pfPerGame,
       titles: s.titles,
+      divTitles: DIVISION_TITLES[owner] || 0,
       titleYears: (titleYears[owner] || []).join(', '),
-      secondPlace: secondPlaceCount[owner] || 0,
-      lastPlace: lastPlaceCount[owner] || 0,
-      pfLeader: pfLeaderCount[owner] || 0,
+      divTitleYears: (DIVISION_TITLE_YEARS[owner] || []).join(', '),
+      secondPlace: (secondPlaceYears[owner] || []).length,
+      secondPlaceYears: (secondPlaceYears[owner] || []).join(', '),
+      lastPlace: (lastPlaceYears[owner] || []).length,
+      lastPlaceYears: (lastPlaceYears[owner] || []).join(', '),
+      pfLeader: (pfLeaderYears[owner] || []).length,
+      pfLeaderYears: (pfLeaderYears[owner] || []).join(', '),
       playoffs: s.playoffs,
       best: s.best_finish || 99,
     };
@@ -1273,16 +1291,17 @@ function buildHistory() {
         <td class="num"><span class="wpct-bar">${r.wpct.toFixed(3)}</span></td>
         <td class="num">${r.pfPerGame.toFixed(1)}</td>
         <td class="num">${r.playoffs}</td>
-        <td class="num titles-cell" title="${r.titleYears}">${r.titles ? r.titles + ' 🏆' : '—'}</td>
-        <td class="num">${r.secondPlace ? r.secondPlace + ' 🥈' : '—'}</td>
-        <td class="num">${r.lastPlace ? r.lastPlace + ' 🚽' : '—'}</td>
-        <td class="num">${r.pfLeader ? r.pfLeader + ' 🔥' : '—'}</td>
+        <td class="num titles-cell" title="${r.titles ? 'Championships: ' + r.titleYears : 'Championships'}">${r.titles ? r.titles + ' 🏆' : '—'}</td>
+        <td class="num" title="${r.divTitles ? 'Division titles: ' + r.divTitleYears : 'Division titles'}">${r.divTitles ? r.divTitles + ' 🏅' : '—'}</td>
+        <td class="num" title="${r.secondPlace ? 'Runner-up: ' + r.secondPlaceYears : 'Runner-up'}">${r.secondPlace ? r.secondPlace + ' 🥈' : '—'}</td>
+        <td class="num" title="${r.lastPlace ? 'Last place: ' + r.lastPlaceYears : 'Last place'}">${r.lastPlace ? r.lastPlace + ' 🚽' : '—'}</td>
+        <td class="num" title="${r.pfLeader ? 'Most points: ' + r.pfLeaderYears : 'Most points'}">${r.pfLeader ? r.pfLeader + ' 🔥' : '—'}</td>
         <td class="num">${r.best === 99 ? '—' : '#' + r.best}</td>
       </tr>
     `).join('');
   }
 
-  const sortKeys = ['owner','seasons','games','wpct','pfPerGame','playoffs','titles','secondPlace','lastPlace','pfLeader','best'];
+  const sortKeys = ['owner','seasons','games','wpct','pfPerGame','playoffs','titles','divTitles','secondPlace','lastPlace','pfLeader','best'];
   let curKey = 'wpct', curDir = -1;
   function sortBy(key, dir) {
     const sorted = rows.slice().sort((a,b) => {
