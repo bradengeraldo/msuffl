@@ -16,13 +16,32 @@ const APP_BUILD = '2026-07-20j';
 const MGR_TO_TEAM = LEAGUE_DATA.managers;
 const TEAM_TO_MGR = Object.fromEntries(Object.entries(MGR_TO_TEAM).map(([k,v]) => [v,k]));
 
+// Regular-season win% and "last place" = worst record, tiebreaker fewest points.
+function teamWinPct(t) { const g = t.w + t.l + t.t; return g ? (t.w + 0.5 * t.t) / g : 0; }
+function worstRecordTeam(teams) {
+  return teams.slice().sort((a, b) => {
+    const wa = teamWinPct(a), wb = teamWinPct(b);
+    if (wa !== wb) return wa - wb;   // lowest win% first
+    return a.pf - b.pf;              // tiebreak: fewest points for
+  })[0];
+}
+
 // ===================== NAVIGATION =====================
 const navBtns = document.querySelectorAll('.nav-btn');
 const pages = document.querySelectorAll('.page');
 
+// Pages where AdSense Auto Ads are suppressed so the live draft / keeper
+// process is never interrupted by an ad. Toggling `body.hide-ads` hides any
+// auto-injected ad elements via CSS (see styles.css).
+const AD_HIDDEN_PAGES = new Set(['draft', 'keepers', 'livedraft']);
+function setAdsHidden(hidden) {
+  document.body.classList.toggle('hide-ads', !!hidden);
+}
+
 function showPage(pageId) {
   navBtns.forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
   pages.forEach(p => p.classList.toggle('active', p.id === `page-${pageId}`));
+  setAdsHidden(AD_HIDDEN_PAGES.has(pageId));
   // Reset roster detail
   if (pageId !== 'rosters') {
     document.getElementById('rosters-list-view').style.display = '';
@@ -1206,8 +1225,7 @@ function buildHistory() {
     if (champ) pushYear(titleYears, champ.owner, yr);
     const runnerUp = season.teams.find(t => t.finalRank === 2);
     if (runnerUp) pushYear(secondPlaceYears, runnerUp.owner, yr);
-    const maxRank = Math.max(...season.teams.map(t => t.finalRank));
-    const lastPlace = season.teams.find(t => t.finalRank === maxRank);
+    const lastPlace = worstRecordTeam(season.teams);
     if (lastPlace) pushYear(lastPlaceYears, lastPlace.owner, yr);
     const maxPF = Math.max(...season.teams.map(t => t.pf));
     const pfLeader = season.teams.find(t => t.pf === maxPF);
@@ -1337,21 +1355,44 @@ function buildHistory() {
   function renderStandings(year) {
     const season = HISTORY_DATA.seasons[year];
     if (!season) { yearContentEl.innerHTML = ''; return; }
-    const rows = season.teams.slice().sort((a,b) => {
-      const fa = a.finalRank || 99, fb = b.finalRank || 99;
-      if (fa !== fb) return fa - fb;
+    const yNum = +year;
+    // Playoff field: 4 teams (2011–2014, 10-team league), 6 teams (2015+).
+    const playoffCut = yNum <= 2014 ? 4 : 6;
+    const isPlayoff = t => (t.finalRank || 99) <= playoffCut;
+    // Playoff teams keep their final (post-season) order; non-playoff teams are
+    // ranked by regular-season record, tiebreaker points for.
+    const rows = season.teams.slice().sort((a, b) => {
+      const pa = isPlayoff(a), pb = isPlayoff(b);
+      if (pa !== pb) return pa ? -1 : 1;
+      if (pa) return (a.finalRank || 99) - (b.finalRank || 99);
+      const wa = teamWinPct(a), wb = teamWinPct(b);
+      if (wa !== wb) return wb - wa;
       return b.pf - a.pf;
     });
+    // Season award markers (same definitions as the All-Time table).
+    const lastTeam = worstRecordTeam(season.teams);
+    const maxPF = Math.max(...season.teams.map(t => t.pf));
+    const divWinners = new Set(
+      Object.entries(DIVISION_TITLE_YEARS)
+        .filter(([, ys]) => ys.includes(yNum))
+        .map(([o]) => o)
+    );
     let html = `<table class="standings-table"><thead><tr>
-      <th></th><th>Team</th><th>Owner</th><th class="num">W-L</th><th class="num">PF</th><th class="num">PA</th><th class="num">Final</th>
+      <th></th><th>Team</th><th>Owner</th><th class="num">W-L</th><th class="num">PF</th><th class="num">PA</th><th class="num" title="ESPN final placement — playoffs 1–${playoffCut}, then consolation bracket">Final</th>
     </tr></thead><tbody>`;
-    rows.forEach((r) => {
+    rows.forEach((r, idx) => {
       const isChamp = r.finalRank === 1;
       const tieStr = r.t ? '-' + r.t : '';
       const finalDisplay = r.finalRank ? '#' + r.finalRank : '—';
+      const marks =
+        (isChamp ? '<span class="std-mark" title="Champion">🏆</span>' : '') +
+        (r.finalRank === 2 ? '<span class="std-mark" title="Runner-up">🥈</span>' : '') +
+        (divWinners.has(r.owner) ? '<span class="std-mark" title="Division winner">🏅</span>' : '') +
+        (r.pf === maxPF ? '<span class="std-mark" title="Most points for">🔥</span>' : '') +
+        (r === lastTeam ? '<span class="std-mark" title="Last place (worst record)">🚽</span>' : '');
       html += `<tr class="${isChamp ? 'is-champ' : ''}">
-        <td class="seed">${r.finalRank || ''}</td>
-        <td class="team-cell">${escHtml(r.name)}${isChamp ? '<span class="champ-mark">🏆</span>' : ''}</td>
+        <td class="seed">${idx + 1}</td>
+        <td class="team-cell">${escHtml(r.name)}${marks}</td>
         <td class="mgr-cell">${escHtml(r.owner)}</td>
         <td class="num">${r.w}-${r.l}${tieStr}</td>
         <td class="num">${r.pf.toFixed(1)}</td>
@@ -1360,6 +1401,7 @@ function buildHistory() {
       </tr>`;
     });
     html += '</tbody></table>';
+    html += `<div class="standings-legend">🏆 Champion · 🥈 Runner-up · 🏅 Division winner · 🔥 Most points for · 🚽 Last place</div>`;
     yearContentEl.innerHTML = html;
   }
   yearTabsEl.querySelectorAll('.year-tab').forEach(tab => {
@@ -3728,6 +3770,7 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
         const ldPage = document.getElementById('page-livedraft');
         if (ldPage) ldPage.classList.add('active');
         btn.classList.add('active');
+        setAdsHidden(true);
         history.replaceState(null, '', location.pathname + '#livedraft');
         // Show comm controls if unlocked
         if (window.commMode && window.commMode.isUnlocked()) {

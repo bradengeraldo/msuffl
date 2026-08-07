@@ -635,10 +635,17 @@
     width: 32px;
     text-align: center;
   }
-  .standings-table .champ-mark {
+  .standings-table .champ-mark,
+  .standings-table .std-mark {
     display: inline-block;
-    margin-left: 0.4rem;
+    margin-left: 0.3rem;
     font-size: 0.95rem;
+  }
+  .standings-legend {
+    margin-top: 0.85rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
   }
   @media (max-width: 640px) {
     .standings-table { font-size: 0.82rem; }
