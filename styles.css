@@ -2228,3 +2228,21 @@
   }
   .rules-card li strong { color: var(--green); font-weight: 600; }
   .rules-card li em { color: var(--muted); font-style: italic; }
+
+/* ===== Ad suppression on draft / keeper pages =====
+   Ads are Google AdSense Auto Ads (script-injected), so there is no ad unit to
+   remove — instead we hide any element AdSense auto-places while the user is on
+   the Rookie Draft, 2026 Keepers, or Live Draft pages (body.hide-ads, toggled
+   in app.js). Keeps the live draft from being interrupted by ads. */
+body.hide-ads ins.adsbygoogle,
+body.hide-ads .google-auto-placed,
+body.hide-ads .adsbygoogle-noablate,
+body.hide-ads ins.adsbygoogle[data-anchor-status],
+body.hide-ads iframe[id^="google_ads_iframe"],
+body.hide-ads iframe[name^="aswift_"],
+body.hide-ads iframe[name^="google_ads"],
+body.hide-ads [data-google-query-id],
+body.hide-ads #google-anchor,
+body.hide-ads .google-anno {
+  display: none !important;
+}
