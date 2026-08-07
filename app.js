@@ -1378,12 +1378,11 @@ function buildHistory() {
         .map(([o]) => o)
     );
     let html = `<table class="standings-table"><thead><tr>
-      <th></th><th>Team</th><th>Owner</th><th class="num">W-L</th><th class="num">PF</th><th class="num">PA</th><th class="num" title="ESPN final placement — playoffs 1–${playoffCut}, then consolation bracket">Final</th>
+      <th></th><th>Team</th><th>Owner</th><th class="num">W-L</th><th class="num">PF</th><th class="num">PA</th>
     </tr></thead><tbody>`;
     rows.forEach((r, idx) => {
       const isChamp = r.finalRank === 1;
       const tieStr = r.t ? '-' + r.t : '';
-      const finalDisplay = r.finalRank ? '#' + r.finalRank : '—';
       const marks =
         (isChamp ? '<span class="std-mark" title="Champion">🏆</span>' : '') +
         (r.finalRank === 2 ? '<span class="std-mark" title="Runner-up">🥈</span>' : '') +
@@ -1397,7 +1396,6 @@ function buildHistory() {
         <td class="num">${r.w}-${r.l}${tieStr}</td>
         <td class="num">${r.pf.toFixed(1)}</td>
         <td class="num">${r.pa.toFixed(1)}</td>
-        <td class="num">${finalDisplay}</td>
       </tr>`;
     });
     html += '</tbody></table>';
