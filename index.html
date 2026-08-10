@@ -29,6 +29,7 @@
       <button class="nav-btn" data-page="keepers">2026 Keepers</button>
       <button class="nav-btn" data-page="tradeanalyzer">Trade Analyzer</button>
       <button class="nav-btn" data-page="history">League History</button>
+      <button class="nav-btn" data-page="writeups">Write-Ups</button>
       <button class="nav-btn" data-page="rules">Rules</button>
     </nav>
   <button class="nav-btn comm-lock-btn" id="comm-lock-btn" title="Commissioner login">🔒</button>
@@ -103,7 +104,6 @@
       <button class="history-section-tab" data-section="h2h">Head-to-Head</button>
       <button class="history-section-tab" data-section="trades">Trades</button>
       <button class="history-section-tab" data-section="draft">Draft</button>
-      <button class="history-section-tab" data-section="writeups">Write Ups</button>
     </div>
 
     <!-- Champions section -->
@@ -169,11 +169,16 @@
       <div id="draft-history-content"></div>
     </div>
 
-    <!-- Write-ups section -->
-    <div class="history-section" id="history-section-writeups">
-      <div class="year-tabs" id="writeups-year-tabs"></div>
-      <div id="writeups-content"></div>
+  </div>
+
+  <!-- WRITE-UPS PAGE -->
+  <div class="page" id="page-writeups">
+    <div class="history-hero">
+      <h2 class="history-title">Write-Ups</h2>
+      <p class="history-sub">Season previews, recaps, and league lore.</p>
     </div>
+    <div class="year-tabs" id="writeups-year-tabs"></div>
+    <div id="writeups-content"></div>
   </div>
 
   <!-- TRADE ANALYZER PAGE -->
@@ -242,7 +247,7 @@
 </main>
 
 <!-- Build stamp — confirm which code a browser is actually running. Bump on each deploy. -->
-<div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-08-10a · app <span id="app-build">NOT-LOADED</span></div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-08-10b · app <span id="app-build">NOT-LOADED</span></div>
 
 <script>
   // leagueData.js is rewritten by the commissioner save engine at unpredictable
@@ -258,7 +263,7 @@
   // Date.now() forces a genuinely fresh fetch on every page load instead.
   document.write('<script src="leagueData.js?t=' + Date.now() + '"></' + 'script>');
 </script>
-<script defer src="app.js?v=2026-08-10a"></script>
+<script defer src="app.js?v=2026-08-10b"></script>
 
 <!-- ===== COMMISSIONER MODE ===== -->
 

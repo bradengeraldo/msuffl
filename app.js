@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-08-10a';
+const APP_BUILD = '2026-08-10b';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -67,8 +67,8 @@ document.querySelector('.nav-btn[data-page="keepers"]')
   // 'submitkeepers' was merged into the 2026 Keepers tab — redirect old links.
   let hashPage = location.hash.slice(1);
   if (hashPage === 'submitkeepers') hashPage = 'keepers';
-  // Trades and Write Ups are now sub-tabs inside League History.
-  if (hashPage === 'trades' || hashPage === 'writeups') hashPage = 'history';
+  // Trades is still a sub-tab inside League History; Write-Ups is its own page.
+  if (hashPage === 'trades') hashPage = 'history';
   if (hashPage) {
     // May run before DOM-built pages are ready; defer slightly
     if (document.readyState === 'loading') {
@@ -3481,7 +3481,7 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
      WRITEUP EDITOR
   ══════════════════════════════════════════════════════════ */
   function injectWriteupsEditBar() {
-    const page = document.getElementById('history-section-writeups');
+    const page = document.getElementById('page-writeups');
     if (!page || page.querySelector('.comm-page-editbar')) return;
     const bar = document.createElement('div');
     bar.className = 'comm-page-editbar';
@@ -3490,8 +3490,8 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
       <button class="comm-btn-add" id="wu-add">＋ New Write-Up</button>
       <button class="comm-btn-save" id="wu-save">💾 Save All</button>
     `;
-    const title = page.querySelector('.section-title');
-    title ? title.after(bar) : page.insertBefore(bar, page.firstChild);
+    const anchor = page.querySelector('#writeups-year-tabs');
+    anchor ? anchor.before(bar) : page.insertBefore(bar, page.firstChild);
 
     document.getElementById('wu-add').addEventListener('click', addWriteup);
     document.getElementById('wu-save').addEventListener('click', saveWriteups);
@@ -4007,7 +4007,7 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
         // Must be scoped to those page containers — the auction page's static
         // `.comm-page-editbar` is always in the DOM and a bare selector here froze
         // ALL data sync for every viewer.
-        if (document.querySelector('#page-draft .comm-page-editbar, #history-section-trades .comm-page-editbar, #history-section-writeups .comm-page-editbar')) return;
+        if (document.querySelector('#page-draft .comm-page-editbar, #history-section-trades .comm-page-editbar, #page-writeups .comm-page-editbar')) return;
 
         // Version changed — fetch full league data (stored as JSON string to preserve arrays)
         const dRes = await fetch(`${FB_DB_URL}/league_data/leagueData.json?t=${Date.now()}`);
