@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-08-24a';
+const APP_BUILD = '2026-08-27a';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -439,6 +439,36 @@ const RD_PICK_RE = /^\s*round\s*\d+\s*,\s*pick\s*\d+\s*(\(\s*\d+\s*\))?\s*$/i;
 
 function rdIsPickRow(name) { return RD_PICK_RE.test(String(name == null ? '' : name).trim()); }
 
+// The stored name for an unused pick ("Round 1, Pick 1"), rebuilt from the row's
+// own round/pick fields when the player field has been blanked.
+function rdPickLabel(p) {
+  const nm = String((p && p.player) || '').trim();
+  if (rdIsPickRow(nm)) return nm;
+  const rd = String((p && p.round) || '').trim();
+  const pk = String((p && p.pick)  || '').trim();
+  const rdN = (rd.match(/\d+/) || [])[0];
+  const pkN = (pk.match(/\d+/) || [])[0];
+  if (rdN && pkN) {
+    // Rounds after the first also carry the overall pick number: "Round 2, Pick 4 (16)".
+    const n = (LEAGUE_DATA.teams || []).length;
+    const overall = (n && +rdN > 1) ? ` (${(+rdN - 1) * n + (+pkN)})` : '';
+    return `Round ${rdN}, Pick ${pkN}${overall}`;
+  }
+  return (rd && pk) ? `${rd}, ${pk}` : (rd || pk || 'Pick');
+}
+
+// An entry is an UNUSED pick if it still carries the placeholder name — or if its
+// player field is EMPTY. The draft editor blanks the placeholder in the input box,
+// and saveDraft used to flush that blank straight back into the data, so a blank
+// player has to read as "nobody drafted here yet", not "this is not a pick".
+// Requires a round or pick label so a genuinely empty spare row is not counted.
+function rdIsUnusedPick(p) {
+  if (!p) return false;
+  const nm = String(p.player == null ? '' : p.player).trim();
+  if (nm) return rdIsPickRow(nm);
+  return !!(String(p.round || '').trim() || String(p.pick || '').trim());
+}
+
 // Pick owners are stored as full team names today, but older rows use manager
 // names ("Adam/Matt"). Resolve both so a stale label doesn't silently drop a pick.
 function rdResolveTeam(label) {
@@ -463,9 +493,9 @@ function getRookiePickSlots(team) {
   const year   = years[years.length - 1];
   if (!year) return [];
   return (drafts[year] || [])
-    .filter(p => rdIsPickRow(p.player) && rdResolveTeam(p.team) === team)
+    .filter(p => rdIsUnusedPick(p) && rdResolveTeam(p.team) === team)
     .map(p => ({
-      player: String(p.player).trim(),
+      player: rdPickLabel(p),
       pos: 'PICK', rookieDeal: 'Pick', val2025: '0', val2026: '1', isPickSlot: true
     }));
 }
@@ -477,6 +507,8 @@ function rosterWithPicks(team) {
 }
 
 window.rdIsPickRow       = rdIsPickRow;
+window.rdIsUnusedPick    = rdIsUnusedPick;
+window.rdPickLabel       = rdPickLabel;
 window.getRookiePickSlots = getRookiePickSlots;
 window.rosterWithPicks   = rosterWithPicks;
 
@@ -3426,11 +3458,13 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
     // database even if the field is never blurred or the Save button isn't clicked.
     contentEl.querySelectorAll('.de-player').forEach(inp => {
       inp.addEventListener('input', function() {
-        picks[parseInt(this.dataset.i)].player = this.value;
+        const p = picks[parseInt(this.dataset.i)];
+        p.player = this.value.trim() || rdPickLabel(p);
         publishDraftLiveDebounced();
       });
       inp.addEventListener('change', function() {
-        picks[parseInt(this.dataset.i)].player = this.value;
+        const p = picks[parseInt(this.dataset.i)];
+        p.player = this.value.trim() || rdPickLabel(p);
         updateRookieDatalist(year);
         publishDraftLive();
       });
@@ -3468,7 +3502,12 @@ if (typeof buildRosters === 'function') { try { buildRosters(); } catch(e) {} }
     document.querySelectorAll('.de-team').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].team = el.value); });
     document.querySelectorAll('.de-orig').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].originalOwner = el.value); });
     document.querySelectorAll('.de-via').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].via = el.value); });
-    document.querySelectorAll('.de-player').forEach(el => { picks[+el.dataset.i] && (picks[+el.dataset.i].player = el.value); });
+    // An empty box means "not drafted yet" — restore the placeholder rather than
+    // blanking it, or every unused pick silently vanishes from rosters and cap math.
+    document.querySelectorAll('.de-player').forEach(el => {
+      const p = picks[+el.dataset.i];
+      if (p) p.player = el.value.trim() || rdPickLabel(p);
+    });
     LEAGUE_DATA.drafts[yr] = picks.filter(p => p.player || p.team);
 
     // Instantly broadcast the live board to every viewer on Save (same dedicated
