@@ -2253,3 +2253,39 @@ body.hide-ads #google-anchor,
 body.hide-ads .google-anno {
   display: none !important;
 }
+
+/* ===== Legacy Score (League History → Legacy) ===== */
+  .legacy-intro { color: var(--muted); font-size: 0.9rem; max-width: 70ch; margin: 0 0 1rem; }
+  .legacy-weights { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .legacy-w { display: grid; gap: 0.25rem; min-width: 0; }
+  .legacy-w label { font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; color: var(--text); }
+  .legacy-w input[type=range] { width: 100%; accent-color: var(--green); }
+  .legacy-val { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); }
+  .legacy-sw { width: 10px; height: 10px; border-radius: 2px; flex: none; display: inline-block; }
+  .legacy-controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin: 0.85rem 0 1rem; font-size: 0.85rem; color: var(--muted); }
+  .legacy-controls input { accent-color: var(--green); }
+  .legacy-reset { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 0.3rem 0.75rem; font: inherit; cursor: pointer; }
+  .legacy-reset:hover { color: var(--text); border-color: var(--border-bright); }
+  .legacy-board { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .legacy-row { display: grid; grid-template-columns: 40px minmax(0,1.3fr) 110px minmax(0,2fr); gap: 0.75rem; align-items: center; padding: 0.75rem 0.9rem; border-top: 1px solid var(--border); }
+  .legacy-row:first-child { border-top: 0; }
+  .legacy-row.former { opacity: 0.6; }
+  .legacy-rank { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; color: var(--muted); text-align: center; line-height: 1; }
+  .legacy-row.top .legacy-rank { color: var(--yellow); }
+  .legacy-who { min-width: 0; }
+  .legacy-name { font-weight: 600; color: var(--text); }
+  .legacy-meta { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+  .legacy-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; }
+  .legacy-chip { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 0.35rem; }
+  .legacy-score { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; text-align: right; color: var(--green); font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .legacy-score.neg { color: var(--red); }
+  .legacy-per { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+  .legacy-bar { position: relative; height: 20px; min-width: 0; }
+  .legacy-axis { position: absolute; top: -4px; bottom: -4px; width: 1px; background: var(--text); opacity: 0.35; }
+  .legacy-seg { position: absolute; top: 3px; height: 14px; transition: left .25s, width .25s; }
+  @media (prefers-reduced-motion: reduce) { .legacy-seg { transition: none; } }
+  @media (max-width: 640px) {
+    .legacy-row { grid-template-columns: 30px minmax(0,1fr) 92px; }
+    .legacy-bar { grid-column: 2 / -1; }
+    .legacy-rank { font-size: 1.5rem; } .legacy-score { font-size: 1.5rem; }
+  }

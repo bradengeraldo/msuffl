@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2026-08-27a">
+<link rel="stylesheet" href="styles.css?v=2026-10-14b">
 </head>
 <body>
 
@@ -100,6 +100,7 @@
     <div class="history-section-tabs" id="history-section-tabs">
       <button class="history-section-tab active" data-section="champions">🏆 Champions</button>
       <button class="history-section-tab" data-section="alltime">All-Time</button>
+      <button class="history-section-tab" data-section="legacy">Legacy</button>
       <button class="history-section-tab" data-section="standings">By Year</button>
       <button class="history-section-tab" data-section="h2h">Head-to-Head</button>
       <button class="history-section-tab" data-section="trades">Trades</button>
@@ -139,6 +140,11 @@
         </table>
       </div>
       <p class="history-note">Records pulled live from ESPN. Counts every regular-season game since each owner's first MSUFFL season. League expanded from 10 → 12 teams in 2015. 2021 onward = 14-game seasons.</p>
+    </div>
+
+    <!-- Legacy score section -->
+    <div class="history-section" id="history-section-legacy">
+      <div id="legacy-root"></div>
     </div>
 
     <!-- By-year standings section -->
@@ -247,7 +253,7 @@
 </main>
 
 <!-- Build stamp — confirm which code a browser is actually running. Bump on each deploy. -->
-<div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-10-14a · app <span id="app-build">NOT-LOADED</span></div>
+<div id="build-stamp" style="position:fixed;bottom:4px;right:6px;font:10px/1.2 monospace;color:#3a3a3a;z-index:9999;pointer-events:none;">html 2026-10-14b · app <span id="app-build">NOT-LOADED</span></div>
 
 <script>
   // leagueData.js is rewritten by the commissioner save engine at unpredictable
@@ -263,7 +269,7 @@
   // Date.now() forces a genuinely fresh fetch on every page load instead.
   document.write('<script src="leagueData.js?t=' + Date.now() + '"></' + 'script>');
 </script>
-<script defer src="app.js?v=2026-10-14a"></script>
+<script defer src="app.js?v=2026-10-14b"></script>
 
 <!-- ===== COMMISSIONER MODE ===== -->
 

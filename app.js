@@ -3,7 +3,7 @@
 // Self-reported build of THIS file. Stamped into the on-screen build marker so we
 // can tell whether app.js itself actually updated on the server — the index.html
 // stamp only proves index.html updated, not this script.
-const APP_BUILD = '2026-10-14a';
+const APP_BUILD = '2026-10-14b';
 (function stampAppBuild(){
   function paint(){
     const el = document.getElementById('app-build');
@@ -1507,6 +1507,115 @@ function buildHistory() {
   renderH2H(defaultOwner);
 }
 
+// ===================== LEGACY SCORE (League History → Legacy) =====================
+// One career number per owner, computed live from HISTORY_DATA so it updates
+// automatically when a new season is added. Co-owned seasons count for every
+// owner on the team (teamOwners). Weights are adjustable on the page.
+function buildLegacy() {
+  const root = document.getElementById('legacy-root');
+  if (!root || typeof HISTORY_DATA === 'undefined') return;
+  const COMPS = [
+    {k:'t',   label:'Championship',      unit:'each',              def:25,  min:0, max:50,  step:1,   col:'var(--yellow)'},
+    {k:'r2',  label:'Runner-up',         unit:'each',              def:10,  min:0, max:30,  step:1,   col:'#b9c4cc'},
+    {k:'pf',  label:'Top scorer season', unit:'each',              def:5,   min:0, max:20,  step:1,   col:'var(--blue)'},
+    {k:'wp',  label:'Reg. season win %', unit:'× (win% − .500)',   def:100, min:0, max:200, step:5,   col:'var(--green)'},
+    {k:'ppg', label:'Points per game',   unit:'per pt vs avg',     def:1,   min:0, max:3,   step:0.1, col:'#7fdca8'},
+    {k:'l',   label:'Last place',        unit:'each (minus)',      def:10,  min:0, max:30,  step:1,   col:'var(--red)'},
+  ];
+  const W = {}; COMPS.forEach(c => W[c.k] = c.def);
+  let showFormer = false;
+
+  // Tally careers. League PPG counts each team-season once.
+  const own = {}; let lgPts = 0, lgG = 0;
+  HISTORY_DATA.years.forEach(y => {
+    const teams = (HISTORY_DATA.seasons[y] || {}).teams || [];
+    if (!teams.length) return;
+    const last = worstRecordTeam(teams);
+    const maxPF = Math.max(...teams.map(t => t.pf));
+    teams.forEach(t => {
+      const g = t.w + t.l + (t.t || 0);
+      lgPts += t.pf; lgG += g;
+      teamOwners(t).forEach(o => {
+        const r = own[o] = own[o] || {o, s:0, w:0, l:0, ti:0, pf:0, g:0, t:[], r2:[], pfl:[], last:[]};
+        r.s++; r.w += t.w; r.l += t.l; r.ti += (t.t || 0); r.pf += t.pf; r.g += g;
+        if (t.finalRank === 1) r.t.push(y);
+        if (t.finalRank === 2) r.r2.push(y);
+        if (t.pf === maxPF) r.pfl.push(y);
+        if (t === last) r.last.push(y);
+      });
+    });
+  });
+  const LG = lgPts / lgG;
+  const current = new Set(HISTORY_DATA.currentOwners);
+  const owners = Object.values(own).map(r => ({...r, wp:(r.w + 0.5*r.ti)/r.g, ppg:r.pf/r.g, cur:current.has(r.o)}));
+
+  const sign = v => (v > 0 ? '+' : '') + v.toFixed(1);
+  const yrs = a => a.map(y => "'" + String(y).slice(2)).join(' ');
+  root.innerHTML = `
+    <p class="legacy-intro">One number for every owner's career. Rings count most, runner-ups and points titles add, last-place finishes take away, and win % and scoring move you up or down from league average. Drag the sliders to reweight.</p>
+    <div class="legacy-weights">${COMPS.map(c => `
+      <div class="legacy-w">
+        <label for="lw-${c.k}"><span class="legacy-sw" style="background:${c.col}"></span>${c.label}</label>
+        <input type="range" id="lw-${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}">
+        <span class="legacy-val" id="lv-${c.k}"></span>
+      </div>`).join('')}
+    </div>
+    <div class="legacy-controls">
+      <label><input type="checkbox" id="legacy-former"> Show former owners</label>
+      <button type="button" class="legacy-reset" id="legacy-reset">Reset weights</button>
+    </div>
+    <div class="legacy-board" id="legacy-board"></div>
+    <p class="history-note">Per-season score in parentheses. Win % adds weight × (win % − .500). Scoring adds weight × (points per game − league average of ${LG.toFixed(1)}). Last place = worst regular-season record, fewest points as tiebreaker. Co-owned seasons count for both owners (Gillespie &amp; Frink 2012, Chorazyczewski &amp; Laethem 2015).</p>`;
+
+  function render() {
+    COMPS.forEach(c => {
+      const v = +W[c.k];
+      document.getElementById('lv-' + c.k).textContent = (c.k === 'l' ? '−' : '+') + (c.step < 1 ? v.toFixed(1) : v) + ' ' + c.unit;
+    });
+    const list = owners.filter(o => showFormer || o.cur).map(o => {
+      const p = {t:W.t*o.t.length, r2:W.r2*o.r2.length, pf:W.pf*o.pfl.length, wp:W.wp*(o.wp-0.5), ppg:W.ppg*(o.ppg-LG), l:-W.l*o.last.length};
+      return {o, p, s:Object.values(p).reduce((a,b) => a+b, 0)};
+    }).sort((a,b) => b.s - a.s);
+    let maxPos = 1, maxNeg = 1;
+    list.forEach(x => { let pos=0, neg=0; Object.values(x.p).forEach(v => v > 0 ? pos += v : neg -= v); maxPos = Math.max(maxPos,pos); maxNeg = Math.max(maxNeg,neg); });
+    const span = maxPos + maxNeg, zero = maxNeg / span * 100;
+    let rank = 0;
+    document.getElementById('legacy-board').innerHTML = list.map(x => {
+      const o = x.o; if (o.cur) rank++;
+      let posAt = zero, negAt = zero, segs = '';
+      COMPS.forEach(c => {
+        const v = x.p[c.k]; if (!v) return;
+        const w = Math.abs(v) / span * 100;
+        if (v > 0) { segs += `<span class="legacy-seg" style="left:${posAt}%;width:${w}%;background:${c.col}" title="${c.label}: ${sign(v)}"></span>`; posAt += w; }
+        else { negAt -= w; segs += `<span class="legacy-seg" style="left:${negAt}%;width:${w}%;background:${c.col}" title="${c.label}: ${sign(v)}"></span>`; }
+      });
+      const chips = [];
+      if (o.t.length) chips.push(`<span class="legacy-chip">🏆 ${o.t.length} · ${yrs(o.t)}</span>`);
+      if (o.r2.length) chips.push(`<span class="legacy-chip">🥈 ${o.r2.length} · ${yrs(o.r2)}</span>`);
+      if (o.pfl.length) chips.push(`<span class="legacy-chip">🔥 ${o.pfl.length} · ${yrs(o.pfl)}</span>`);
+      if (o.last.length) chips.push(`<span class="legacy-chip">🚽 ${o.last.length} · ${yrs(o.last)}</span>`);
+      const per = Math.round(x.s / o.s * 10) / 10 || 0;
+      return `<div class="legacy-row${o.cur ? '' : ' former'}${o.cur && rank === 1 ? ' top' : ''}">
+        <div class="legacy-rank">${o.cur ? rank : '–'}</div>
+        <div class="legacy-who">
+          <div class="legacy-name">${escHtml(o.o)}${o.cur ? '' : ' <span class="legacy-meta">(former)</span>'}</div>
+          <div class="legacy-meta">${o.s} seasons · ${o.w}-${o.l}${o.ti ? '-' + o.ti : ''} · ${o.wp.toFixed(3).replace(/^0/, '')} · ${o.ppg.toFixed(1)} ppg</div>
+          <div class="legacy-chips">${chips.join('')}</div>
+        </div>
+        <div class="legacy-score${x.s < 0 ? ' neg' : ''}">${sign(x.s)}<span class="legacy-per">(${sign(per)}/season)</span></div>
+        <div class="legacy-bar" aria-hidden="true"><span class="legacy-axis" style="left:${zero}%"></span>${segs}</div>
+      </div>`;
+    }).join('');
+  }
+  COMPS.forEach(c => document.getElementById('lw-' + c.k).addEventListener('input', e => { W[c.k] = +e.target.value; render(); }));
+  document.getElementById('legacy-former').addEventListener('change', e => { showFormer = e.target.checked; render(); });
+  document.getElementById('legacy-reset').addEventListener('click', () => {
+    COMPS.forEach(c => { W[c.k] = c.def; document.getElementById('lw-' + c.k).value = c.def; });
+    render();
+  });
+  render();
+}
+
 // ── Rules page renderer (data lives in RULES_SECTIONS; commissioner-editable) ──
 function rulesInlineMd(str) {
   var s = String(str == null ? '' : str)
@@ -1543,6 +1652,7 @@ buildDraftHistory();
 buildWriteUps();
 buildRules();
 buildHistory();
+buildLegacy();
 
 // Make showTeamDetail global
 window.showTeamDetail = showTeamDetail;
